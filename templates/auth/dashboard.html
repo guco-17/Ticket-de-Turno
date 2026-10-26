@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block title %}Administración | Ticket de Turno{% endblock %}
+
+{% block content %}
+<section class="mx-auto page-content">
+    <div class="card shadow-sm">
+        <div class="card-body p-4">
+            <h1 class="h3">Panel de administración</h1>
+            <p class="mb-0">Acceso autenticado para <strong>{{ session.get("admin_username") }}</strong>.</p>
+        </div>
+    </div>
+</section>
+{% endblock %}

@@ -23,6 +23,9 @@ class Usuario(db.Model):
 
 class Solicitud(db.Model):
     __tablename__ = "solicitudes"
+    __table_args__ = (
+        db.UniqueConstraint("municipio_id", "turno", name="uq_turno_municipio"),
+    )
     id = db.Column(db.Integer, primary_key=True)
     municipio_id = db.Column(db.Integer, db.ForeignKey("municipios.id"), nullable=False)
     turno = db.Column(db.Integer, nullable=False)
@@ -33,6 +36,8 @@ class Solicitud(db.Model):
     fecha_nacimiento = db.Column(db.Date)
     telefono = db.Column(db.String(15))
     correo = db.Column(db.String(120))
+    nivel_educativo = db.Column(db.String(30), nullable=False, default="")
+    asunto = db.Column(db.String(50), nullable=False, default="")
     estatus_id = db.Column(db.Integer, db.ForeignKey("estatus.id"), nullable=False, default=1)
     creado_en = db.Column(db.DateTime, server_default=db.func.now())
     actualizado_en = db.Column(db.DateTime, server_default=db.func.now(), onupdate=db.func.now())

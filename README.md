@@ -2,7 +2,7 @@
 
 Aplicación web en Flask para capturar solicitudes de atención y generar un ticket de turno. El proyecto incluye una base de datos MySQL, modelos SQLAlchemy y un layout responsivo con Bootstrap 5.
 
-> Estado actual: el formulario valida los datos y responde al envío, pero la ruta `/generar-turno` todavía no guarda solicitudes en MySQL ni asigna un número de turno.
+El formulario público registra y modifica solicitudes en MySQL, asigna turnos consecutivos por municipio y descarga un comprobante PDF.
 
 ## ORM y conexión a la base de datos
 
@@ -10,7 +10,33 @@ La instancia compartida `db` se declara una sola vez en `extensions.py` y se ini
 
 ## Interfaz
 
-Las vistas heredan de `templates/base.html`, que proporciona Bootstrap 5.3.3, navegación adaptable y pie de página común. Las páginas agregan su contenido en los bloques de la plantilla base; los estilos propios están en `static/css/style.css`.
+Al abrir la aplicación en `/` aparece el formulario de turnos. El enlace **Inicio** abre la página de bienvenida en `/welcome`, mientras que **Generar turno** abre el formulario en `/solicitud`. Las vistas heredan de `templates/base.html`, que proporciona Bootstrap 5.3.3, navegación adaptable y pie de página común. Los estilos propios están en `static/css/style.css`.
+
+## Acceso de administradores
+
+El acceso está en <http://127.0.0.1:5000/admin/login>. Solo las cuentas activas de la tabla `usuarios` pueden iniciar sesión. El esquema actual no tiene roles separados; por ello, registra en esa tabla únicamente cuentas de administradores. Las contraseñas se guardan con hash, las rutas de administración requieren una sesión autenticada y los formularios de acceso y cierre de sesión usan token CSRF. El CAPTCHA genera un código aleatorio en una imagen PNG, lo valida una sola vez por sesión y no almacena el código en claro.
+
+Con el entorno virtual activo, crea una cuenta administrativa de forma interactiva:
+
+```powershell
+flask --app app crear-admin
+```
+
+El comando solicita usuario, nombre y una contraseña de al menos 12 caracteres; la contraseña no se imprime ni se agrega al repositorio. Ejecuta el comando una vez por cada administrador autorizado. Protege `SECRET_KEY` con un valor aleatorio propio y no uses la clave de desarrollo en producción. Este CAPTCHA local ayuda a limitar envíos automatizados simples, pero no sustituye servicios anti-bot ni límites de intentos para una instalación expuesta a Internet.
+
+## Registro, modificación y comprobantes de turno
+
+Las rutas públicas `/` y `/solicitud` permiten registrar una solicitud. Para modificar un registro, el usuario busca la solicitud con el **CURP y el número de turno asignado**; una coincidencia exacta carga sus datos para editarlos. Si cambia el municipio, el sistema asigna un nuevo turno en ese municipio; si no cambia, conserva el turno original.
+
+Cada municipio tiene un contador independiente y persistente que comienza en 1. La fila del municipio se bloquea durante la asignación y la base impone unicidad sobre `(municipio_id, turno)` para evitar turnos repetidos. El contador avanza al registrar una solicitud y al trasladarla a otro municipio; una modificación en el mismo municipio conserva su turno.
+
+Al registrar o actualizar correctamente, el navegador descarga un comprobante PDF con folio, turno, municipio, datos básicos del solicitante, fecha y un código QR que contiene el CURP del alumno solicitante. El PDF se entrega como respuesta directa y no se almacena en el servidor. Para preparar una base existente, ejecuta una vez (el comando se puede repetir):
+
+```powershell
+flask --app app preparar-solicitudes
+```
+
+El comando agrega las columnas faltantes, carga los municipios iniciales que no existan y corrige los contadores para que no queden por debajo de turnos ya registrados. Las instalaciones nuevas pueden importar `database/ticket_turno.sql`. El comprobante confirma el registro, pero no la resolución del trámite.
 
 ## Requisitos
 
@@ -88,6 +114,7 @@ python -m pip check
 ```text
 .
 ├── app.py                 # Aplicación Flask y rutas HTTP
+├── receipts.py            # Generación del comprobante PDF
 ├── config.py              # Configuración y conexión MySQL desde variables de entorno
 ├── extensions.py          # Extensiones Flask compartidas (SQLAlchemy)
 ├── models/
@@ -97,11 +124,20 @@ python -m pip check
 │   └── ticket_turno.sql   # Esquema y datos iniciales
 ├── templates/
 │   ├── base.html          # Layout compartido: Bootstrap, navbar y footer
-│   └── index.html         # Formulario principal
+│   ├── welcome.html       # Página de bienvenida (/welcome)
+│   └── index.html         # Formulario para generar turnos
+│   └── auth/
+│       ├── login.html     # Acceso de administradores
+│       └── dashboard.html # Página protegida
 ├── static/
-│   ├── css/style.css
+│   ├── css/style.css      # Estilos de la aplicación
+│   ├── js/captcha.js      # Actualización del CAPTCHA
 │   ├── img/logo.jpg
-│   └── js/script.js
+│   └── js/script.js       # Validación del formulario de turnos
+├── auth.py                # Autenticación, CAPTCHA y protección de rutas
+├── tests/
+│   ├── test_auth.py       # Pruebas de acceso y CAPTCHA
+│   └── test_public_requests.py # Pruebas de registro, edición y turnos
 ├── requirements.txt
 └── .env.example           # Plantilla de configuración; no contiene secretos
 ```
@@ -112,7 +148,7 @@ El archivo `.gitignore` excluye el entorno virtual, cachés y `.env`. Antes de p
 
 ```bash
 git status --short
-git add .gitignore .env.example README.md app.py config.py extensions.py requirements.txt database models static templates
+git add .gitignore .env.example README.md app.py auth.py config.py extensions.py requirements.txt database models static templates tests
 git diff --cached
 git commit -m "Configura entorno inicial del proyecto"
 git remote add origin https://github.com/USUARIO/REPOSITORIO.git

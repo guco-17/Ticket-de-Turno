@@ -8,6 +8,15 @@ CREATE TABLE municipios (
   activo        TINYINT(1) NOT NULL DEFAULT 1
 );
 
+INSERT INTO municipios (nombre) VALUES
+  ('Acuña'),
+  ('Arteaga'),
+  ('Monclova'),
+  ('Parras'),
+  ('Ramos Arizpe'),
+  ('Saltillo'),
+  ('Torreón');
+
 CREATE TABLE estatus (
   id      INT AUTO_INCREMENT PRIMARY KEY,
   nombre  VARCHAR(30) NOT NULL UNIQUE
@@ -33,6 +42,8 @@ CREATE TABLE solicitudes (
   fecha_nacimiento DATE,
   telefono         VARCHAR(15),
   correo           VARCHAR(120),
+  nivel_educativo  VARCHAR(30) NOT NULL DEFAULT '',
+  asunto           VARCHAR(50) NOT NULL DEFAULT '',
   estatus_id       INT NOT NULL DEFAULT 1,
   creado_en        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   actualizado_en   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

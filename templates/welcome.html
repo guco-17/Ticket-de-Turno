@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}Bienvenido | Ticket de Turno{% endblock %}
+
+{% block content %}
+<section class="welcome-hero p-4 p-md-5 mb-4">
+    <div class="row align-items-center g-4">
+        <div class="col-12 col-lg-7">
+            <span class="badge rounded-pill text-bg-light text-primary mb-3">Sistema de atención</span>
+            <h1 class="display-5 fw-bold mb-3">Bienvenido al sistema de Ticket de Turno</h1>
+            <p class="lead mb-4">
+                Inicia tu solicitud de atención de forma sencilla. Captura tus datos
+                y la información del trámite para continuar.
+            </p>
+            <div class="d-flex flex-column flex-sm-row gap-2">
+                <a class="btn btn-light btn-lg px-4" href="{{ url_for('solicitud') }}">
+                    Generar un turno
+                </a>
+                <a class="btn btn-outline-light btn-lg px-4" href="{{ url_for('auth.login') }}">
+                    Acceso administradores
+                </a>
+            </div>
+        </div>
+        <div class="col-12 col-lg-5">
+            <div class="welcome-card p-4 p-md-5">
+                <h2 class="h4 mb-3">¿Cómo comenzar?</h2>
+                <ol class="welcome-steps mb-0">
+                    <li>Selecciona <strong>Generar un turno</strong>.</li>
+                    <li>Completa tus datos de contacto.</li>
+                    <li>Indica el municipio y el trámite que necesitas.</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="row g-3" aria-label="Información del servicio">
+    <div class="col-12 col-md-4">
+        <article class="card h-100 shadow-sm">
+            <div class="card-body">
+                <h2 class="h5">Proceso sencillo</h2>
+                <p class="text-body-secondary mb-0">Llena el formulario con la información solicitada para iniciar tu atención.</p>
+            </div>
+        </article>
+    </div>
+    <div class="col-12 col-md-4">
+        <article class="card h-100 shadow-sm">
+            <div class="card-body">
+                <h2 class="h5">Elige tu trámite</h2>
+                <p class="text-body-secondary mb-0">Indica el municipio, nivel educativo y asunto que deseas consultar.</p>
+            </div>
+        </article>
+    </div>
+    <div class="col-12 col-md-4">
+        <article class="card h-100 shadow-sm">
+            <div class="card-body">
+                <h2 class="h5">Atención administrativa</h2>
+                <p class="text-body-secondary mb-0">El personal autorizado puede ingresar desde el acceso para administradores.</p>
+            </div>
+        </article>
+    </div>
+</section>
+{% endblock %}

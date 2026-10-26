@@ -17,6 +17,32 @@ body {
     max-width: 960px;
 }
 
+.welcome-hero {
+    overflow: hidden;
+    border-radius: 1rem;
+    background: linear-gradient(125deg, #4a235a, #74418a);
+    color: #fff;
+}
+
+.welcome-card {
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: 0.75rem;
+    background-color: rgba(255, 255, 255, 0.12);
+}
+
+.welcome-steps li {
+    padding: 0.35rem 0;
+}
+
+.auth-card {
+    max-width: 520px;
+}
+
+.captcha-image {
+    width: 200px;
+    height: 72px;
+}
+
 .btn-primary {
     --bs-btn-bg: #5b2c6f;
     --bs-btn-border-color: #5b2c6f;

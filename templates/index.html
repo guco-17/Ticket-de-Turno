@@ -1,45 +1,77 @@
 {% extends "base.html" %}
 
-{% block title %}Generar turno | Ticket de Turno{% endblock %}
+{% block title %}Solicitud de atención | Ticket de Turno{% endblock %}
 
 {% block content %}
 <section class="mx-auto page-content" id="solicitud">
+    <div class="card shadow-sm mb-4">
+        <div class="card-body p-3 p-md-4">
+            <h2 class="h5">¿Ya tienes un turno?</h2>
+            <p class="text-body-secondary">Consulta tu solicitud con el CURP y el número de turno asignado para modificarla.</p>
+            <form id="buscar-solicitud-form" class="row g-3 align-items-end">
+                <div class="col-12 col-md-5">
+                    <label class="form-label" for="curp-busqueda">CURP</label>
+                    <input class="form-control" type="text" id="curp-busqueda" maxlength="18" autocomplete="off" required>
+                </div>
+                <div class="col-12 col-md-4">
+                    <label class="form-label" for="turno-busqueda">Número de turno</label>
+                    <input class="form-control" type="number" id="turno-busqueda" min="1" step="1" inputmode="numeric" required>
+                </div>
+                <div class="col-12 col-md-3 d-grid">
+                    <button class="btn btn-outline-primary" type="submit">Buscar solicitud</button>
+                </div>
+                <div class="col-12">
+                    <p id="mensaje-busqueda" class="mb-0" role="status" aria-live="polite" hidden></p>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 mb-4">
         <div>
             <h1 class="h2 mb-1">Solicitud de atención</h1>
-            <p class="text-body-secondary mb-0">Completa los datos para generar un turno.</p>
+            <p class="text-body-secondary mb-0" id="form-description">Completa los datos para generar un turno.</p>
         </div>
-        <span class="badge rounded-pill text-bg-primary fs-6">Turno actual: 4</span>
+        <span class="badge rounded-pill text-bg-primary fs-6" id="turno-badge" hidden></span>
     </div>
+
+    {% if not municipios %}
+    <div class="alert alert-warning" role="alert">
+        El catálogo de municipios aún no está preparado. El administrador debe ejecutar
+        <code>flask --app app preparar-solicitudes</code> antes de recibir solicitudes.
+    </div>
+    {% endif %}
 
     <form id="solicitud-form" class="card shadow-sm" novalidate>
         <div class="card-body p-3 p-md-4">
+            <input type="hidden" id="turno-actual" name="turno" value="">
             <fieldset class="border-0 mb-4">
                 <legend class="h5 border-bottom pb-2 mb-3">Datos del solicitante</legend>
                 <div class="row g-3">
                     <div class="col-12 col-md-6">
                         <label class="form-label" for="curp">CURP del solicitante</label>
-                        <input class="form-control" type="text" id="curp" name="curp" maxlength="18" placeholder="ABCD123456HDFXXX00">
+                        <input class="form-control" type="text" id="curp" name="curp" maxlength="18" placeholder="GODE561231HDFRRN09" required>
+                        <div class="form-text">El CURP identifica la solicitud y no se puede cambiar al modificarla.</div>
                     </div>
                     <div class="col-12 col-md-6">
                         <label class="form-label" for="nombre">Nombre(s)</label>
-                        <input class="form-control" type="text" id="nombre" name="nombre">
+                        <input class="form-control" type="text" id="nombre" name="nombre" maxlength="100" required>
                     </div>
                     <div class="col-12 col-md-6">
                         <label class="form-label" for="primer-apellido">Primer apellido</label>
-                        <input class="form-control" type="text" id="primer-apellido" name="primer_apellido">
+                        <input class="form-control" type="text" id="primer-apellido" name="primer_apellido" maxlength="100" required>
                     </div>
                     <div class="col-12 col-md-6">
                         <label class="form-label" for="segundo-apellido">Segundo apellido</label>
-                        <input class="form-control" type="text" id="segundo-apellido" name="segundo_apellido">
+                        <input class="form-control" type="text" id="segundo-apellido" name="segundo_apellido" maxlength="100" required>
                     </div>
                     <div class="col-12 col-md-6">
                         <label class="form-label" for="telefono-contacto">Teléfono de contacto</label>
-                        <input class="form-control" type="tel" id="telefono-contacto" name="telefono_contacto">
+                        <input class="form-control" type="tel" id="telefono-contacto" name="telefono_contacto" maxlength="15" required>
                     </div>
                     <div class="col-12 col-md-6">
                         <label class="form-label" for="correo">Correo electrónico</label>
-                        <input class="form-control" type="email" id="correo" name="correo">
+                        <input class="form-control" type="email" id="correo" name="correo" maxlength="120" required>
                     </div>
                 </div>
             </fieldset>
@@ -49,20 +81,16 @@
                 <div class="row g-3">
                     <div class="col-12 col-md-6">
                         <label class="form-label" for="municipio">Municipio donde desea estudiar el alumno</label>
-                        <select class="form-select" id="municipio" name="municipio">
+                        <select class="form-select" id="municipio" name="municipio" required>
                             <option value="">Seleccione una opción</option>
-                            <option value="Saltillo">Saltillo</option>
-                            <option value="Monclova">Monclova</option>
-                            <option value="Torreón">Torreón</option>
-                            <option value="RamosArizpe">Ramos Arizpe</option>
-                            <option value="Arteaga">Arteaga</option>
-                            <option value="Parras">Parras</option>
-                            <option value="Acuña">Acuña</option>
+                            {% for municipio in municipios %}
+                            <option value="{{ municipio.nombre }}">{{ municipio.nombre }}</option>
+                            {% endfor %}
                         </select>
                     </div>
                     <div class="col-12 col-md-6">
                         <label class="form-label" for="nivel-educativo">Nivel educativo</label>
-                        <select class="form-select" id="nivel-educativo" name="nivel_educativo">
+                        <select class="form-select" id="nivel-educativo" name="nivel_educativo" required>
                             <option value="">Seleccione una opción</option>
                             <option value="preescolar">Preescolar</option>
                             <option value="kinder">Kinder</option>
@@ -76,7 +104,7 @@
                     </div>
                     <div class="col-12">
                         <label class="form-label" for="asunto">Asunto o trámite a realizar</label>
-                        <select class="form-select" id="asunto" name="asunto">
+                        <select class="form-select" id="asunto" name="asunto" required>
                             <option value="">Seleccione una opción</option>
                             <option value="inscripcion">Inscripción</option>
                             <option value="reinscripcion">Reinscripción</option>
@@ -90,7 +118,8 @@
 
             <p id="mensaje-formulario" class="turno-mensaje mt-4 mb-0" role="status" aria-live="polite" hidden></p>
             <div class="d-grid d-sm-flex justify-content-sm-end mt-4">
-                <button class="btn btn-primary px-4" type="submit">Generar turno</button>
+                <button class="btn btn-outline-secondary me-sm-2" id="cancelar-edicion" type="button" hidden>Cancelar modificación</button>
+                <button class="btn btn-primary px-4" id="guardar-solicitud" type="submit">Registrar solicitud y descargar comprobante</button>
             </div>
         </div>
     </form>
