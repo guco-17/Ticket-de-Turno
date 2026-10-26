@@ -2,6 +2,8 @@ from flask import Flask, jsonify, render_template, request
 
 from config import Config
 from extensions import db
+# Importing the models registers their tables with SQLAlchemy metadata.
+from models import Estatus, Municipio, Solicitud, Usuario
 
 
 def create_app(config_class=Config):

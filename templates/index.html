@@ -1,106 +1,102 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="../static/css/style.css">
-    <title>Ticket de turno</title>
-</head>
-<body>
-    
-    <header>
-        <img src="../static/img/logo.jpg" alt="Logo de la SEP">
-        <h1>Ticket de turno</h1>
-        <span aria-label="Número de turno actual">4</span>
-    </header>
+{% extends "base.html" %}
 
-    <form novalidate>
-        <fieldset>
-                <legend>Datos del solicitante</legend>
-                <div>
-                    <label for="curp">CURP del solicitante:</label>
-                    <input type="text" id="curp" name="curp" maxlength="18" placeholder="ABCD123456HDFXXX00">
-                </div>
+{% block title %}Generar turno | Ticket de Turno{% endblock %}
 
-                <div>
-                    <label for="nombre">Nombre(s):</label>
-                    <input type="text" id="nombre" name="nombre">
-                </div>
-
-                <div>
-                    <label for="primer-apellido">Primer apellido:</label>
-                    <input type="text" id="primer-apellido" name="primer_apellido">
-                </div>
-
-                <div>
-                    <label for="segundo-apellido">Segundo apellido:</label>
-                    <input type="text" id="segundo-apellido" name="segundo_apellido">
-                </div>
-
-                <div>
-                    <label for="telefono-contacto">Telefono de contacto:</label>
-                    <input type="tel" id="telefono-contacto" name="telefono_contacto">
-                </div>
-
-                <div>
-                    <label for="correo">Correo electrónico:</label>
-                    <input type="email" id="correo" name="correo">
-                </div>
-        </fieldset>
-
-
-        <fieldset>
-
-            <div>
-                <label for="municipio">Municipio donde desea estudiar el alumno:</label>
-                <select id="municipio" name="municipio">
-                    <option value="">Seleccione una opción</option>
-                    <option value="Saltillo">Saltillo</option>
-                    <option value="Monclova">Monclova</option>
-                    <option value="Torreón">Torreón</option>
-                    <option value="RamosArizpe">Ramos Arizpe</option>
-                    <option value="Arteaga">Arteaga</option>
-                    <option value="Parras">Parras</option>
-                    <option value="Acuña">Acuña</option>
-                </select>
-            </div>
-
-            <div>
-                <label for="nivel-educativo">Nivel educativo:</label>
-                <select id="nivel-educativo" name="nivel_educativo">
-                    <option value="">Seleccione una opción</option>
-                    <option value="preescolar">Preescolar</option>
-                    <option value="kinder">Kinder</option>
-                    <option value="primaria">Primaria</option>
-                    <option value="secundaria">Secundaria</option>
-                    <option value="bachillerato">Bachillerato</option>
-                    <option value="licenciatura">Licenciatura</option>
-                    <option value="maestria">Maestría</option>
-                    <option value="doctorado">Doctorado</option>
-                </select>
-            </div>
-
-            
-
-            <div>
-                <label for="asunto">Asunto o trámite a realizar:</label>
-                <select id="asunto" name="asunto">
-                    <option value="">Seleccione una opción</option>
-                    <option value="inscripcion">Inscripción</option>
-                    <option value="reinscripcion">Reinscripción</option>
-                    <option value="cambio_escuela">Cambio de escuela</option>
-                    <option value="duplicado_certificado">Duplicado de certificado</option>
-                    <option value="aclaracion_datos">Aclaración de datos</option>
-                </select>
-            </div>
-        </fieldset>
-    
-        <p id="mensaje-formulario" class="turno-mensaje" role="status" aria-live="polite" hidden></p>
+{% block content %}
+<section class="mx-auto page-content" id="solicitud">
+    <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 mb-4">
         <div>
-            <button type="submit">Generar Turno</button>
+            <h1 class="h2 mb-1">Solicitud de atención</h1>
+            <p class="text-body-secondary mb-0">Completa los datos para generar un turno.</p>
+        </div>
+        <span class="badge rounded-pill text-bg-primary fs-6">Turno actual: 4</span>
+    </div>
+
+    <form id="solicitud-form" class="card shadow-sm" novalidate>
+        <div class="card-body p-3 p-md-4">
+            <fieldset class="border-0 mb-4">
+                <legend class="h5 border-bottom pb-2 mb-3">Datos del solicitante</legend>
+                <div class="row g-3">
+                    <div class="col-12 col-md-6">
+                        <label class="form-label" for="curp">CURP del solicitante</label>
+                        <input class="form-control" type="text" id="curp" name="curp" maxlength="18" placeholder="ABCD123456HDFXXX00">
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label" for="nombre">Nombre(s)</label>
+                        <input class="form-control" type="text" id="nombre" name="nombre">
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label" for="primer-apellido">Primer apellido</label>
+                        <input class="form-control" type="text" id="primer-apellido" name="primer_apellido">
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label" for="segundo-apellido">Segundo apellido</label>
+                        <input class="form-control" type="text" id="segundo-apellido" name="segundo_apellido">
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label" for="telefono-contacto">Teléfono de contacto</label>
+                        <input class="form-control" type="tel" id="telefono-contacto" name="telefono_contacto">
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label" for="correo">Correo electrónico</label>
+                        <input class="form-control" type="email" id="correo" name="correo">
+                    </div>
+                </div>
+            </fieldset>
+
+            <fieldset class="border-0">
+                <legend class="h5 border-bottom pb-2 mb-3">Datos del trámite</legend>
+                <div class="row g-3">
+                    <div class="col-12 col-md-6">
+                        <label class="form-label" for="municipio">Municipio donde desea estudiar el alumno</label>
+                        <select class="form-select" id="municipio" name="municipio">
+                            <option value="">Seleccione una opción</option>
+                            <option value="Saltillo">Saltillo</option>
+                            <option value="Monclova">Monclova</option>
+                            <option value="Torreón">Torreón</option>
+                            <option value="RamosArizpe">Ramos Arizpe</option>
+                            <option value="Arteaga">Arteaga</option>
+                            <option value="Parras">Parras</option>
+                            <option value="Acuña">Acuña</option>
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label" for="nivel-educativo">Nivel educativo</label>
+                        <select class="form-select" id="nivel-educativo" name="nivel_educativo">
+                            <option value="">Seleccione una opción</option>
+                            <option value="preescolar">Preescolar</option>
+                            <option value="kinder">Kinder</option>
+                            <option value="primaria">Primaria</option>
+                            <option value="secundaria">Secundaria</option>
+                            <option value="bachillerato">Bachillerato</option>
+                            <option value="licenciatura">Licenciatura</option>
+                            <option value="maestria">Maestría</option>
+                            <option value="doctorado">Doctorado</option>
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label" for="asunto">Asunto o trámite a realizar</label>
+                        <select class="form-select" id="asunto" name="asunto">
+                            <option value="">Seleccione una opción</option>
+                            <option value="inscripcion">Inscripción</option>
+                            <option value="reinscripcion">Reinscripción</option>
+                            <option value="cambio_escuela">Cambio de escuela</option>
+                            <option value="duplicado_certificado">Duplicado de certificado</option>
+                            <option value="aclaracion_datos">Aclaración de datos</option>
+                        </select>
+                    </div>
+                </div>
+            </fieldset>
+
+            <p id="mensaje-formulario" class="turno-mensaje mt-4 mb-0" role="status" aria-live="polite" hidden></p>
+            <div class="d-grid d-sm-flex justify-content-sm-end mt-4">
+                <button class="btn btn-primary px-4" type="submit">Generar turno</button>
+            </div>
         </div>
     </form>
+</section>
+{% endblock %}
 
-    <script src="../static/js/script.js"></script>
-</body>
-</html>
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/script.js') }}" defer></script>
+{% endblock %}
