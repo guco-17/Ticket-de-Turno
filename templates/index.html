@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../static/css/style.css">
+    <title>Ticket de turno</title>
+</head>
+<body>
+    
+    <header>
+        <img src="../static/img/logo.jpg" alt="Logo de la SEP">
+        <h1>Ticket de turno</h1>
+        <span aria-label="Número de turno actual">4</span>
+    </header>
+
+    <form novalidate>
+        <fieldset>
+                <legend>Datos del solicitante</legend>
+                <div>
+                    <label for="curp">CURP del solicitante:</label>
+                    <input type="text" id="curp" name="curp" maxlength="18" placeholder="ABCD123456HDFXXX00">
+                </div>
+
+                <div>
+                    <label for="nombre">Nombre(s):</label>
+                    <input type="text" id="nombre" name="nombre">
+                </div>
+
+                <div>
+                    <label for="primer-apellido">Primer apellido:</label>
+                    <input type="text" id="primer-apellido" name="primer_apellido">
+                </div>
+
+                <div>
+                    <label for="segundo-apellido">Segundo apellido:</label>
+                    <input type="text" id="segundo-apellido" name="segundo_apellido">
+                </div>
+
+                <div>
+                    <label for="telefono-contacto">Telefono de contacto:</label>
+                    <input type="tel" id="telefono-contacto" name="telefono_contacto">
+                </div>
+
+                <div>
+                    <label for="correo">Correo electrónico:</label>
+                    <input type="email" id="correo" name="correo">
+                </div>
+        </fieldset>
+
+
+        <fieldset>
+
+            <div>
+                <label for="municipio">Municipio donde desea estudiar el alumno:</label>
+                <select id="municipio" name="municipio">
+                    <option value="">Seleccione una opción</option>
+                    <option value="Saltillo">Saltillo</option>
+                    <option value="Monclova">Monclova</option>
+                    <option value="Torreón">Torreón</option>
+                    <option value="RamosArizpe">Ramos Arizpe</option>
+                    <option value="Arteaga">Arteaga</option>
+                    <option value="Parras">Parras</option>
+                    <option value="Acuña">Acuña</option>
+                </select>
+            </div>
+
+            <div>
+                <label for="nivel-educativo">Nivel educativo:</label>
+                <select id="nivel-educativo" name="nivel_educativo">
+                    <option value="">Seleccione una opción</option>
+                    <option value="preescolar">Preescolar</option>
+                    <option value="kinder">Kinder</option>
+                    <option value="primaria">Primaria</option>
+                    <option value="secundaria">Secundaria</option>
+                    <option value="bachillerato">Bachillerato</option>
+                    <option value="licenciatura">Licenciatura</option>
+                    <option value="maestria">Maestría</option>
+                    <option value="doctorado">Doctorado</option>
+                </select>
+            </div>
+
+            
+
+            <div>
+                <label for="asunto">Asunto o trámite a realizar:</label>
+                <select id="asunto" name="asunto">
+                    <option value="">Seleccione una opción</option>
+                    <option value="inscripcion">Inscripción</option>
+                    <option value="reinscripcion">Reinscripción</option>
+                    <option value="cambio_escuela">Cambio de escuela</option>
+                    <option value="duplicado_certificado">Duplicado de certificado</option>
+                    <option value="aclaracion_datos">Aclaración de datos</option>
+                </select>
+            </div>
+        </fieldset>
+    
+        <p id="mensaje-formulario" class="turno-mensaje" role="status" aria-live="polite" hidden></p>
+        <div>
+            <button type="submit">Generar Turno</button>
+        </div>
+    </form>
+
+    <script src="../static/js/script.js"></script>
+</body>
+</html>
