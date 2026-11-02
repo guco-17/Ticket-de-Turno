@@ -24,6 +24,36 @@ flask --app app crear-admin
 
 El comando solicita usuario, nombre y una contraseña de al menos 12 caracteres; la contraseña no se imprime ni se agrega al repositorio. Ejecuta el comando una vez por cada administrador autorizado. Protege `SECRET_KEY` con un valor aleatorio propio y no uses la clave de desarrollo en producción. Este CAPTCHA local ayuda a limitar envíos automatizados simples, pero no sustituye servicios anti-bot ni límites de intentos para una instalación expuesta a Internet.
 
+## Menú y cierre de sesión
+
+Con una sesión de administrador, la barra de navegación muestra **Panel**, **Solicitudes**, el submenú **Catálogos** (Municipios y Estatus) y un menú con el nombre de la cuenta que contiene **Cerrar sesión**. La opción de la página actual aparece resaltada. Sin sesión solo se muestran las opciones públicas y **Acceso administradores**.
+
+Medidas de seguridad de la parte privada:
+
+- Cerrar sesión se hace con `POST` y token CSRF, y elimina toda la sesión.
+- Las páginas privadas se envían con `Cache-Control: no-store`, por lo que tras cerrar sesión el botón **Atrás** del navegador no vuelve a mostrar datos.
+- La sesión vence tras `SESSION_MINUTES` minutos de inactividad (30 por omisión, configurable en `.env`); la cookie es `HttpOnly` y `SameSite=Lax`.
+
+## Gestión de solicitudes (administradores)
+
+Con una sesión de administrador, la opción **Solicitudes** (`/admin/solicitudes`) permite consultar registros por **CURP** (coincidencia parcial) o por **nombre** (cada palabra se busca en nombre y apellidos). Desde los resultados se puede:
+
+- **Registrar** una solicitud nueva; el turno se asigna con el mismo contador por municipio que usa el formulario público.
+- **Modificar** los datos de una solicitud; si cambia el municipio se asigna un turno nuevo.
+- **Eliminar** una solicitud, previa confirmación.
+- **Cambiar el estatus** entre “Pendiente” y “Resuelto”.
+
+Todas las acciones requieren sesión activa y token CSRF.
+
+## Catálogos
+
+Los catálogos del modelo de datos se administran desde **Catálogos** en el menú de administración:
+
+- **Municipios** (`/admin/catalogos/municipios`): registrar, renombrar, activar o desactivar y eliminar. Solo los municipios activos aparecen en el formulario público.
+- **Estatus** (`/admin/catalogos/estatus`): registrar, renombrar y eliminar estatus adicionales. “Pendiente” y “Resuelto” los usa el sistema y están protegidos.
+
+Un registro con solicitudes asociadas no se puede eliminar; en el caso de un municipio, desactívalo para retirarlo del formulario. Los nombres no se repiten (sin distinguir mayúsculas).
+
 ## Registro, modificación y comprobantes de turno
 
 Las rutas públicas `/` y `/solicitud` permiten registrar una solicitud. Para modificar un registro, el usuario busca la solicitud con el **CURP y el número de turno asignado**; una coincidencia exacta carga sus datos para editarlos. Si cambia el municipio, el sistema asigna un nuevo turno en ese municipio; si no cambia, conserva el turno original.
@@ -114,6 +144,9 @@ python -m pip check
 ```text
 .
 ├── app.py                 # Aplicación Flask y rutas HTTP
+├── admin.py               # Gestión de solicitudes para administradores
+├── catalogos.py           # CRUD de los catálogos de municipios y estatus
+├── solicitudes.py         # Validación de solicitudes y asignación de turnos
 ├── receipts.py            # Generación del comprobante PDF
 ├── config.py              # Configuración y conexión MySQL desde variables de entorno
 ├── extensions.py          # Extensiones Flask compartidas (SQLAlchemy)
@@ -129,15 +162,23 @@ python -m pip check
 │   └── auth/
 │       ├── login.html     # Acceso de administradores
 │       └── dashboard.html # Página protegida
+│   └── admin/
+│       ├── solicitudes.html     # Consulta y acciones sobre solicitudes
+│       ├── solicitud_form.html  # Alta y edición de solicitudes
+│       ├── catalogo.html        # Listado y alta de un catálogo
+│       └── catalogo_form.html   # Edición de un registro de catálogo
 ├── static/
 │   ├── css/style.css      # Estilos de la aplicación
 │   ├── js/captcha.js      # Actualización del CAPTCHA
+│   ├── js/admin.js        # Confirmación de acciones administrativas
 │   ├── img/logo.jpg
 │   └── js/script.js       # Validación del formulario de turnos
 ├── auth.py                # Autenticación, CAPTCHA y protección de rutas
 ├── tests/
 │   ├── test_auth.py       # Pruebas de acceso y CAPTCHA
-│   └── test_public_requests.py # Pruebas de registro, edición y turnos
+│   ├── test_public_requests.py # Pruebas de registro, edición y turnos
+│   ├── test_admin_requests.py  # Pruebas de la gestión de solicitudes
+│   └── test_catalogos.py       # Pruebas del CRUD de catálogos
 ├── requirements.txt
 └── .env.example           # Plantilla de configuración; no contiene secretos
 ```

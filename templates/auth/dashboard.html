@@ -4,10 +4,36 @@
 
 {% block content %}
 <section class="mx-auto page-content">
-    <div class="card shadow-sm">
+    <div class="card shadow-sm mb-4">
         <div class="card-body p-4">
             <h1 class="h3">Panel de administración</h1>
             <p class="mb-0">Acceso autenticado para <strong>{{ session.get("admin_username") }}</strong>.</p>
+        </div>
+    </div>
+    <div class="row g-3">
+        <div class="col-md-6">
+            <a class="card shadow-sm h-100 text-decoration-none dashboard-link" href="{{ url_for('admin.solicitudes') }}">
+                <div class="card-body p-4">
+                    <h2 class="h5">Solicitudes</h2>
+                    <p class="text-body-secondary mb-0">Consulta por CURP o nombre, registra, modifica, elimina y marca como “Resuelto” o “Pendiente”.</p>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-6">
+            <a class="card shadow-sm h-100 text-decoration-none dashboard-link" href="{{ url_for('catalogos.listar', clave='municipios') }}">
+                <div class="card-body p-4">
+                    <h2 class="h5">Catálogo de municipios</h2>
+                    <p class="text-body-secondary mb-0">Agrega, modifica, activa, desactiva o elimina los municipios de atención.</p>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-6">
+            <a class="card shadow-sm h-100 text-decoration-none dashboard-link" href="{{ url_for('catalogos.listar', clave='estatus') }}">
+                <div class="card-body p-4">
+                    <h2 class="h5">Catálogo de estatus</h2>
+                    <p class="text-body-secondary mb-0">Administra los estatus disponibles para las solicitudes.</p>
+                </div>
+            </a>
         </div>
     </div>
 </section>

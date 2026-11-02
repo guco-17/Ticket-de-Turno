@@ -1,4 +1,6 @@
 import os
+from datetime import timedelta
+
 from dotenv import load_dotenv
 from sqlalchemy.engine import URL
 
@@ -17,3 +19,9 @@ class Config:
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SECRET_KEY = os.getenv("SECRET_KEY") or "dev-only-change-me"
+    # Administrator sessions expire after this many minutes of inactivity.
+    PERMANENT_SESSION_LIFETIME = timedelta(
+        minutes=int(os.getenv("SESSION_MINUTES", "30"))
+    )
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = "Lax"

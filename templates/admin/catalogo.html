@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}{{ catalogo.titulo }} | Ticket de Turno{% endblock %}
+
+{% block content %}
+<section class="mx-auto page-content">
+    <div class="mb-4">
+        <h1 class="h3 mb-1">Catálogo de {{ catalogo.titulo|lower }}</h1>
+        <p class="text-body-secondary mb-0">
+            {% if catalogo.tiene_activo %}
+            Solo los municipios activos aparecen en el formulario público de turnos.
+            {% else %}
+            Los estatus “Pendiente” y “Resuelto” los usa el sistema y no se pueden renombrar ni eliminar.
+            {% endif %}
+        </p>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h2 class="h6 mb-3">Registrar {{ catalogo.singular }}</h2>
+            <form class="row g-2 align-items-center" action="{{ url_for('catalogos.crear', clave=clave) }}" method="post">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="col-sm">
+                    <label class="visually-hidden" for="nombre">Nombre</label>
+                    <input class="form-control" id="nombre" name="nombre" maxlength="{{ catalogo.longitud }}" placeholder="Nombre" required>
+                </div>
+                {% if catalogo.tiene_activo %}
+                <div class="col-sm-auto">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="activo" name="activo" value="1" checked>
+                        <label class="form-check-label" for="activo">Activo</label>
+                    </div>
+                </div>
+                {% endif %}
+                <div class="col-sm-auto">
+                    <button class="btn btn-primary w-100" type="submit">Agregar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% if registros %}
+    <div class="card shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 admin-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Nombre</th>
+                        {% if catalogo.tiene_activo %}
+                        <th scope="col">Estado</th>
+                        <th scope="col">Último turno</th>
+                        {% endif %}
+                        <th scope="col">Solicitudes</th>
+                        <th scope="col" class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for registro in registros %}
+                    <tr>
+                        <td>
+                            {{ registro.nombre }}
+                            {% if registro.nombre in protegidos %}<span class="badge text-bg-light border ms-1">Sistema</span>{% endif %}
+                        </td>
+                        {% if catalogo.tiene_activo %}
+                        <td>
+                            {% if registro.activo %}
+                            <span class="badge text-bg-success">Activo</span>
+                            {% else %}
+                            <span class="badge text-bg-secondary">Inactivo</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ registro.ultimo_turno }}</td>
+                        {% endif %}
+                        <td>{{ uso.get(registro.id, 0) }}</td>
+                        <td class="text-end text-nowrap">
+                            {% if registro.nombre not in protegidos %}
+                            <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('catalogos.editar', clave=clave, registro_id=registro.id) }}">Modificar</a>
+                            <form
+                                class="d-inline"
+                                action="{{ url_for('catalogos.eliminar', clave=clave, registro_id=registro.id) }}"
+                                method="post"
+                                data-confirm="¿Eliminar “{{ registro.nombre }}”?">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button class="btn btn-sm btn-outline-danger" type="submit">Eliminar</button>
+                            </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    <div class="alert alert-secondary" role="status">No hay registros en este catálogo.</div>
+    {% endif %}
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/admin.js') }}" defer></script>
+{% endblock %}

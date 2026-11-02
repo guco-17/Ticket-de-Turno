@@ -80,6 +80,67 @@ class AuthenticationTests(unittest.TestCase):
         self.assertEqual(logout.status_code, 302)
         self.assertEqual(self.client.get("/admin").status_code, 302)
 
+    def test_private_pages_are_not_cached_and_session_expires(self):
+        self.set_challenge()
+        self.client.post(
+            "/admin/login",
+            data={
+                "csrf_token": "csrf-test-token",
+                "usuario": "admin",
+                "password": "ClaveSegura123!",
+                "captcha": "ABC234",
+            },
+        )
+        with self.client.session_transaction() as session:
+            self.assertTrue(session.permanent)
+
+        for path in ("/admin", "/admin/solicitudes", "/admin/catalogos/estatus"):
+            with self.subTest(path=path):
+                response = self.client.get(path)
+                self.assertEqual(response.status_code, 200)
+                self.assertIn("no-store", response.headers["Cache-Control"])
+
+    def test_navigation_menu_depends_on_session(self):
+        public_page = self.client.get("/welcome").get_data(as_text=True)
+        self.assertIn("Acceso administradores", public_page)
+        self.assertNotIn("Cerrar sesión", public_page)
+        self.assertNotIn("/admin/solicitudes", public_page)
+
+        with self.client.session_transaction() as session:
+            session["admin_id"] = 1
+            session["admin_username"] = "admin"
+        admin_page = self.client.get("/admin/solicitudes").get_data(as_text=True)
+
+        for link in (
+            'href="/admin"',
+            'href="/admin/solicitudes"',
+            'href="/admin/catalogos/municipios"',
+            'href="/admin/catalogos/estatus"',
+            'action="/admin/logout"',
+        ):
+            with self.subTest(link=link):
+                self.assertIn(link, admin_page)
+        self.assertIn("Cerrar sesión", admin_page)
+        self.assertNotIn("Acceso administradores", admin_page)
+
+    def test_logout_requires_csrf_and_closes_session(self):
+        with self.client.session_transaction() as session:
+            session["admin_id"] = 1
+            session["admin_username"] = "admin"
+            session["csrf_token"] = "csrf-test-token"
+
+        rejected = self.client.post("/admin/logout", data={"csrf_token": "otro"})
+        self.assertEqual(rejected.headers["Location"], "/admin")
+        self.assertEqual(self.client.get("/admin").status_code, 200)
+
+        closed = self.client.post("/admin/logout", data={"csrf_token": "csrf-test-token"})
+        self.assertEqual(closed.headers["Location"], "/admin/login")
+        with self.client.session_transaction() as session:
+            self.assertNotIn("admin_id", session)
+        for path in ("/admin", "/admin/solicitudes", "/admin/catalogos/municipios"):
+            with self.subTest(path=path):
+                self.assertEqual(self.client.get(path).status_code, 302)
+
     def test_deactivated_admin_session_is_revoked(self):
         self.set_challenge()
         response = self.client.post(

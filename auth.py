@@ -62,7 +62,12 @@ def admin_required(view):
         ).first() is None:
             session.clear()
             return redirect(url_for("auth.login"))
-        return view(*args, **kwargs)
+        # Private pages must not be cached so they cannot be reopened with
+        # the browser's back button after the session is closed.
+        response = make_response(view(*args, **kwargs))
+        response.headers["Cache-Control"] = "no-store, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        return response
 
     return wrapped_view
 
@@ -146,6 +151,7 @@ def login_submit():
         return redirect(url_for("auth.login"))
 
     session.clear()
+    session.permanent = True
     session["admin_id"] = user.id
     session["admin_username"] = user.usuario
     get_csrf_token()
