@@ -35,6 +35,15 @@ Con una sesión de administrador, la opción **Solicitudes** (`/admin/solicitude
 
 Todas las acciones requieren sesión activa y token CSRF.
 
+## Catálogos
+
+Los catálogos del modelo de datos se administran desde **Catálogos** en el menú de administración:
+
+- **Municipios** (`/admin/catalogos/municipios`): registrar, renombrar, activar o desactivar y eliminar. Solo los municipios activos aparecen en el formulario público.
+- **Estatus** (`/admin/catalogos/estatus`): registrar, renombrar y eliminar estatus adicionales. “Pendiente” y “Resuelto” los usa el sistema y están protegidos.
+
+Un registro con solicitudes asociadas no se puede eliminar; en el caso de un municipio, desactívalo para retirarlo del formulario. Los nombres no se repiten (sin distinguir mayúsculas).
+
 ## Registro, modificación y comprobantes de turno
 
 Las rutas públicas `/` y `/solicitud` permiten registrar una solicitud. Para modificar un registro, el usuario busca la solicitud con el **CURP y el número de turno asignado**; una coincidencia exacta carga sus datos para editarlos. Si cambia el municipio, el sistema asigna un nuevo turno en ese municipio; si no cambia, conserva el turno original.
@@ -126,6 +135,7 @@ python -m pip check
 .
 ├── app.py                 # Aplicación Flask y rutas HTTP
 ├── admin.py               # Gestión de solicitudes para administradores
+├── catalogos.py           # CRUD de los catálogos de municipios y estatus
 ├── solicitudes.py         # Validación de solicitudes y asignación de turnos
 ├── receipts.py            # Generación del comprobante PDF
 ├── config.py              # Configuración y conexión MySQL desde variables de entorno
@@ -144,7 +154,9 @@ python -m pip check
 │       └── dashboard.html # Página protegida
 │   └── admin/
 │       ├── solicitudes.html     # Consulta y acciones sobre solicitudes
-│       └── solicitud_form.html  # Alta y edición de solicitudes
+│       ├── solicitud_form.html  # Alta y edición de solicitudes
+│       ├── catalogo.html        # Listado y alta de un catálogo
+│       └── catalogo_form.html   # Edición de un registro de catálogo
 ├── static/
 │   ├── css/style.css      # Estilos de la aplicación
 │   ├── js/captcha.js      # Actualización del CAPTCHA
@@ -155,7 +167,8 @@ python -m pip check
 ├── tests/
 │   ├── test_auth.py       # Pruebas de acceso y CAPTCHA
 │   ├── test_public_requests.py # Pruebas de registro, edición y turnos
-│   └── test_admin_requests.py  # Pruebas de la gestión de solicitudes
+│   ├── test_admin_requests.py  # Pruebas de la gestión de solicitudes
+│   └── test_catalogos.py       # Pruebas del CRUD de catálogos
 ├── requirements.txt
 └── .env.example           # Plantilla de configuración; no contiene secretos
 ```

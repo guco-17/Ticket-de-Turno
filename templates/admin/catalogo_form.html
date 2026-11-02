@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}Modificar {{ catalogo.singular }} | Ticket de Turno{% endblock %}
+
+{% block content %}
+<section class="mx-auto auth-card">
+    <nav aria-label="Ruta de navegación">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('catalogos.listar', clave=clave) }}">{{ catalogo.titulo }}</a></li>
+            <li class="breadcrumb-item active" aria-current="page">{{ registro.nombre }}</li>
+        </ol>
+    </nav>
+    <div class="card shadow-sm">
+        <div class="card-body p-4">
+            <h1 class="h4 mb-1">Modificar {{ catalogo.singular }}</h1>
+            <p class="text-body-secondary mb-4">Solicitudes asociadas: {{ en_uso }}.</p>
+            {% if protegido %}
+            <div class="alert alert-info" role="status">Este estatus lo usa el sistema y no se puede modificar.</div>
+            {% endif %}
+            <form method="post">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="mb-3">
+                    <label class="form-label" for="nombre">Nombre</label>
+                    <input class="form-control" id="nombre" name="nombre" maxlength="{{ catalogo.longitud }}"
+                        value="{{ request.form.get('nombre', registro.nombre) }}" required {% if protegido %}disabled{% endif %}>
+                </div>
+                {% if catalogo.tiene_activo %}
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" id="activo" name="activo" value="1"
+                        {% if registro.activo %}checked{% endif %}>
+                    <label class="form-check-label" for="activo">Activo (visible en el formulario público)</label>
+                </div>
+                {% endif %}
+                <div class="d-flex justify-content-end gap-2">
+                    <a class="btn btn-outline-secondary" href="{{ url_for('catalogos.listar', clave=clave) }}">Cancelar</a>
+                    <button class="btn btn-primary" type="submit" {% if protegido %}disabled{% endif %}>Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</section>
+{% endblock %}

@@ -9,6 +9,7 @@ from reportlab.platypus.doctemplate import LayoutError
 
 from admin import admin
 from auth import auth, get_csrf_token, verify_csrf_token
+from catalogos import catalogos
 from config import Config
 from extensions import db
 # Importing the models registers their tables with SQLAlchemy metadata.
@@ -68,6 +69,7 @@ def create_app(config_class=Config):
     db.init_app(app)
     app.register_blueprint(auth)
     app.register_blueprint(admin)
+    app.register_blueprint(catalogos)
 
     @app.cli.command("crear-admin")
     def create_admin():
