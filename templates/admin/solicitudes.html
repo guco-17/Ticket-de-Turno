@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block title %}Solicitudes | Ticket de Turno{% endblock %}
+
+{% block content %}
+<section>
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div>
+            <h1 class="h3 mb-1">Solicitudes</h1>
+            <p class="text-body-secondary mb-0">Consulta por CURP o por nombre, cambia el estatus o administra los registros.</p>
+        </div>
+        <a class="btn btn-primary" href="{{ url_for('admin.nueva_solicitud') }}">Registrar solicitud</a>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form class="row g-2 align-items-end" action="{{ url_for('admin.solicitudes') }}" method="get" role="search">
+                <div class="col-sm-4 col-md-3">
+                    <label class="form-label" for="criterio">Buscar por</label>
+                    <select class="form-select" id="criterio" name="criterio">
+                        <option value="nombre" {% if criterio == "nombre" %}selected{% endif %}>Nombre</option>
+                        <option value="curp" {% if criterio == "curp" %}selected{% endif %}>CURP</option>
+                    </select>
+                </div>
+                <div class="col-sm-8 col-md-6">
+                    <label class="form-label" for="q">Término de búsqueda</label>
+                    <input
+                        class="form-control"
+                        type="search"
+                        id="q"
+                        name="q"
+                        value="{{ termino }}"
+                        maxlength="100"
+                        placeholder="Ej. María Gómez o GODE561231">
+                </div>
+                <div class="col-md-3 d-flex gap-2">
+                    <button class="btn btn-primary flex-fill" type="submit">Buscar</button>
+                    <a class="btn btn-outline-secondary flex-fill" href="{{ url_for('admin.solicitudes') }}">Limpiar</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% if solicitudes %}
+    <p class="text-body-secondary small">
+        {% if termino %}{{ solicitudes|length }} resultado(s) para “{{ termino }}”.{% else %}Solicitudes más recientes.{% endif %}
+        {% if solicitudes|length >= limite %}Se muestran las primeras {{ limite }}; refina la búsqueda para ver otras.{% endif %}
+    </p>
+    <div class="card shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 admin-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Turno</th>
+                        <th scope="col">CURP</th>
+                        <th scope="col">Nombre</th>
+                        <th scope="col">Trámite</th>
+                        <th scope="col">Estatus</th>
+                        <th scope="col" class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for solicitud in solicitudes %}
+                    <tr>
+                        <td>
+                            <strong>{{ solicitud.turno }}</strong>
+                            <div class="small text-body-secondary">{{ solicitud.municipio.nombre }}</div>
+                        </td>
+                        <td class="font-monospace">{{ solicitud.curp }}</td>
+                        <td>
+                            {{ solicitud.nombre }} {{ solicitud.apellido_paterno }} {{ solicitud.apellido_materno or "" }}
+                            <div class="small text-body-secondary">{{ niveles.get(solicitud.nivel_educativo, solicitud.nivel_educativo) }}</div>
+                        </td>
+                        <td>{{ asuntos.get(solicitud.asunto, solicitud.asunto) }}</td>
+                        <td>
+                            <form class="d-flex gap-1" action="{{ url_for('admin.cambiar_estatus', solicitud_id=solicitud.id) }}" method="post">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="next" value="{{ request.full_path }}">
+                                <select
+                                    class="form-select form-select-sm status-select status-{{ solicitud.estatus.nombre|lower }}"
+                                    name="estatus_id"
+                                    aria-label="Estatus de la solicitud {{ solicitud.curp }}">
+                                    {% for item in estatus %}
+                                    <option value="{{ item.id }}" {% if item.id == solicitud.estatus_id %}selected{% endif %}>{{ item.nombre }}</option>
+                                    {% endfor %}
+                                </select>
+                                <button class="btn btn-sm btn-outline-primary" type="submit">Aplicar</button>
+                            </form>
+                        </td>
+                        <td class="text-end text-nowrap">
+                            <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('admin.editar_solicitud', solicitud_id=solicitud.id) }}">Modificar</a>
+                            <form
+                                class="d-inline"
+                                action="{{ url_for('admin.eliminar_solicitud', solicitud_id=solicitud.id) }}"
+                                method="post"
+                                data-confirm="¿Eliminar la solicitud con CURP {{ solicitud.curp }}? Esta acción no se puede deshacer.">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="next" value="{{ request.full_path }}">
+                                <button class="btn btn-sm btn-outline-danger" type="submit">Eliminar</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    <div class="alert alert-secondary" role="status">
+        {% if termino %}No se encontraron solicitudes para “{{ termino }}”.{% else %}Aún no hay solicitudes registradas.{% endif %}
+    </div>
+    {% endif %}
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/admin.js') }}" defer></script>
+{% endblock %}

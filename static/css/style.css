@@ -95,3 +95,24 @@ fieldset legend {
     background-color: #fff;
     border-top: 1px solid #dcdfe6;
 }
+
+
+.admin-table th {
+    color: #5b2c6f;
+    white-space: nowrap;
+}
+
+.status-select {
+    min-width: 8rem;
+    font-weight: 600;
+}
+
+.status-select.status-pendiente {
+    color: #8a5a00;
+    background-color: #fff6df;
+}
+
+.status-select.status-resuelto {
+    color: #176b2c;
+    background-color: #e5f6e9;
+}
