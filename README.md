@@ -24,6 +24,16 @@ flask --app app crear-admin
 
 El comando solicita usuario, nombre y una contraseña de al menos 12 caracteres; la contraseña no se imprime ni se agrega al repositorio. Ejecuta el comando una vez por cada administrador autorizado. Protege `SECRET_KEY` con un valor aleatorio propio y no uses la clave de desarrollo en producción. Este CAPTCHA local ayuda a limitar envíos automatizados simples, pero no sustituye servicios anti-bot ni límites de intentos para una instalación expuesta a Internet.
 
+## Menú y cierre de sesión
+
+Con una sesión de administrador, la barra de navegación muestra **Panel**, **Solicitudes**, el submenú **Catálogos** (Municipios y Estatus) y un menú con el nombre de la cuenta que contiene **Cerrar sesión**. La opción de la página actual aparece resaltada. Sin sesión solo se muestran las opciones públicas y **Acceso administradores**.
+
+Medidas de seguridad de la parte privada:
+
+- Cerrar sesión se hace con `POST` y token CSRF, y elimina toda la sesión.
+- Las páginas privadas se envían con `Cache-Control: no-store`, por lo que tras cerrar sesión el botón **Atrás** del navegador no vuelve a mostrar datos.
+- La sesión vence tras `SESSION_MINUTES` minutos de inactividad (30 por omisión, configurable en `.env`); la cookie es `HttpOnly` y `SameSite=Lax`.
+
 ## Gestión de solicitudes (administradores)
 
 Con una sesión de administrador, la opción **Solicitudes** (`/admin/solicitudes`) permite consultar registros por **CURP** (coincidencia parcial) o por **nombre** (cada palabra se busca en nombre y apellidos). Desde los resultados se puede:

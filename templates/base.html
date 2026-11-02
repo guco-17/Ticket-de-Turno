@@ -37,29 +37,65 @@
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="main-navigation">
+                {% set endpoint = request.endpoint or "" %}
+                {% set catalogo_actual = (request.view_args or {}).get("clave") %}
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('welcome') }}">Inicio</a>
+                        <a class="nav-link {% if endpoint == 'welcome' %}active{% endif %}" href="{{ url_for('welcome') }}"
+                            {% if endpoint == 'welcome' %}aria-current="page"{% endif %}>Inicio</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('solicitud') }}">Generar turno</a>
+                        <a class="nav-link {% if endpoint in ('index', 'solicitud') %}active{% endif %}" href="{{ url_for('solicitud') }}"
+                            {% if endpoint in ('index', 'solicitud') %}aria-current="page"{% endif %}>Generar turno</a>
                     </li>
                     {% if session.get("admin_id") %}
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('auth.dashboard') }}">Administración</a>
-                    </li>
-                    <li class="nav-item d-flex align-items-center px-lg-2 text-white-50">
-                        {{ session.get("admin_username") }}
+                        <a class="nav-link {% if endpoint == 'auth.dashboard' %}active{% endif %}" href="{{ url_for('auth.dashboard') }}"
+                            {% if endpoint == 'auth.dashboard' %}aria-current="page"{% endif %}>Panel</a>
                     </li>
                     <li class="nav-item">
-                        <form action="{{ url_for('auth.logout') }}" method="post">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <button class="nav-link border-0 bg-transparent" type="submit">Cerrar sesión</button>
-                        </form>
+                        <a class="nav-link {% if endpoint.startswith('admin.') %}active{% endif %}" href="{{ url_for('admin.solicitudes') }}"
+                            {% if endpoint.startswith('admin.') %}aria-current="page"{% endif %}>Solicitudes</a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a
+                            class="nav-link dropdown-toggle {% if endpoint.startswith('catalogos.') %}active{% endif %}"
+                            href="#"
+                            role="button"
+                            data-bs-toggle="dropdown"
+                            aria-expanded="false">Catálogos</a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li>
+                                <a class="dropdown-item {% if catalogo_actual == 'municipios' %}active{% endif %}"
+                                    href="{{ url_for('catalogos.listar', clave='municipios') }}">Municipios</a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item {% if catalogo_actual == 'estatus' %}active{% endif %}"
+                                    href="{{ url_for('catalogos.listar', clave='estatus') }}">Estatus</a>
+                            </li>
+                        </ul>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a
+                            class="nav-link dropdown-toggle"
+                            href="#"
+                            role="button"
+                            data-bs-toggle="dropdown"
+                            aria-expanded="false">{{ session.get("admin_username") }}</a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><span class="dropdown-item-text small text-body-secondary">Sesión de administrador</span></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <form action="{{ url_for('auth.logout') }}" method="post">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button class="dropdown-item text-danger" type="submit">Cerrar sesión</button>
+                                </form>
+                            </li>
+                        </ul>
                     </li>
                     {% else %}
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('auth.login') }}">Acceso administradores</a>
+                        <a class="nav-link {% if endpoint == 'auth.login' %}active{% endif %}" href="{{ url_for('auth.login') }}">Acceso administradores</a>
                     </li>
                     {% endif %}
                 </ul>
