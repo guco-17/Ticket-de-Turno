@@ -1,136 +1,132 @@
 # Ticket de Turno
 
-Aplicación web en Flask para capturar solicitudes de atención y generar un ticket de turno. El proyecto está construido bajo una **arquitectura MVC totalmente Orientada a Objetos (POO)**, incluye una base de datos MySQL administrada mediante **ORM (SQLAlchemy)**, **API REST (`/api/v1`)**, **patrones de diseño (`Singleton`, `Factory` y `Observer`)**, un **tablero (Dashboard) con gráficas interactivas** y un layout responsivo con Bootstrap 5.
+Ticket de Turno es una aplicación web para registrar y administrar solicitudes de atención relacionadas con trámites educativos. La persona solicitante captura sus datos, selecciona un municipio y el trámite que necesita; el sistema asigna un turno consecutivo para ese municipio y genera un comprobante descargable en PDF con un código QR.
 
-El formulario público registra y modifica solicitudes en MySQL, asigna turnos consecutivos por municipio y descarga un comprobante PDF con código QR.
+El personal administrador puede consultar y actualizar las solicitudes, revisar indicadores de atención y mantener los catálogos de municipios y estatus. El proyecto está desarrollado en Python con Flask, utiliza MySQL para guardar la información y organiza sus responsabilidades mediante una arquitectura por capas basada en MVC y programación orientada a objetos.
 
-## Arquitectura MVC y Programación Orientada a Objetos (POO)
+## Objetivo y alcance
 
-El sistema separa sus responsabilidades en capas orientadas a objetos:
+El sistema centraliza el registro de solicitudes y facilita el seguimiento de su atención. Sus funciones principales son:
 
-- **Modelos (`models/`)**: [`BaseModel`](models/models.py), [`Municipio`](models/models.py), [`Estatus`](models/models.py), [`Usuario`](models/models.py) y [`Solicitud`](models/models.py) encapsulan el mapeo ORM y los métodos de negocio (`avanzar_turno`, `es_protegido`, `establecer_password`, `verificar_password`, `nombre_completo`, `actualizar_datos`, `to_dict`, `to_public_dict`).
-- **Vistas (`templates/` y `static/`)**: Plantillas Jinja2 responsivas con Bootstrap 5.3.3 y controladores Frontend en JavaScript orientado a objetos ([`DashboardController`](static/js/dashboard.js)).
-- **Controladores (`controllers/`)**: Clases controladoras que reciben las peticiones HTTP, coordinan los servicios y devuelven vistas HTML o respuestas JSON:
-  - [`PublicController`](controllers/public_controller.py): Portal público y generación de comprobantes PDF.
-  - [`AuthController`](controllers/auth_controller.py): Login con CAPTCHA, cierre de sesión y vista del Dashboard.
-  - [`AdminSolicitudesController`](controllers/admin_controller.py): Consulta, alta, edición, cambio de estatus y eliminación de solicitudes.
-  - [`CatalogoController`](controllers/catalogo_controller.py): CRUD de los catálogos del modelo de datos.
-  - [`ApiController`](controllers/api_controller.py): Endpoints de la API REST (`/api/v1`).
-- **Servicios de Dominio (`services/`)**: Clases con responsabilidad única para la lógica de negocio: [`AuthService`](services/auth_service.py), [`CaptchaService`](services/auth_service.py), [`CsrfProtectionService`](services/auth_service.py), [`SolicitudService`](services/solicitud_service.py), [`SolicitudValidator`](services/solicitud_service.py), [`TurnAllocatorService`](services/solicitud_service.py), [`CatalogoService`](services/catalogo_service.py), [`DashboardService`](services/dashboard_service.py), [`QrCodeBuilder`](services/receipt_service.py) y [`TicketReceiptGenerator`](services/receipt_service.py).
+- Registrar solicitudes desde un formulario público.
+- Asignar turnos independientes por municipio y evitar números duplicados.
+- Consultar y modificar una solicitud usando el CURP y el turno asignado.
+- Descargar un comprobante PDF con los datos del trámite y un QR que contiene el CURP.
+- Permitir al personal autorizado buscar, registrar, editar, eliminar y cambiar el estatus de las solicitudes.
+- Mostrar un tablero con totales, porcentajes y gráficas por estatus y municipio.
+- Administrar municipios y estatus desde catálogos.
+- Exponer los datos y operaciones principales mediante una API REST JSON.
 
-## Patrones de Diseño Implementados (`patterns/`)
+Los estatus base son **Pendiente** y **Resuelto**. El comprobante confirma que la solicitud quedó registrada; no significa que el trámite ya haya sido resuelto.
 
-El proyecto implementa tres patrones de diseño clásicos orientados a objetos:
+## Cómo funciona
 
-1. **Patrón Singleton (`patterns/singleton.py` y `extensions.py`)**:
-   - La clase [`DatabaseSingleton`](extensions.py) garantiza mediante `__new__` que exista una única instancia compartida del gestor ORM `SQLAlchemy` (`db`) en todo el ciclo de vida de la aplicación.
-2. **Patrón Factory (`patterns/factory.py` y `app.py`)**:
-   - [`CatalogoFactory`](patterns/factory.py) instancia polimórficamente los descriptores de catálogo ([`MunicipioCatalogoDescriptor`](patterns/factory.py) y [`EstatusCatalogoDescriptor`](patterns/factory.py), subclases de la clase abstracta [`CatalogoDescriptor`](patterns/factory.py)).
-   - [`ApplicationFactory`](app.py) construye y configura la instancia de la aplicación Flask, registrando Blueprints, extensiones y comandos CLI.
-3. **Patrón Observer (`patterns/observer.py`)**:
-   - [`SolicitudEventSubject`](patterns/observer.py) (Sujeto observable) notifica automáticamente a los observadores suscritos (que implementan la interfaz abstracta [`SolicitudObserver`](patterns/observer.py), como [`AuditLogObserver`](patterns/observer.py)) cada vez que una solicitud se registra, modifica, cambia de estatus entre *“Pendiente”* y *“Resuelto”* o se elimina.
+### Flujo de una solicitud pública
 
-## ORM y conexión a la base de datos
+1. La persona abre **Generar turno** y captura el CURP del alumno, nombre, apellidos, teléfono, correo, municipio, nivel educativo y trámite.
+2. El navegador valida los campos y envía los datos en JSON al servidor, junto con un token CSRF.
+3. Flask valida nuevamente la información en el servidor: formato del CURP, datos obligatorios, teléfono de diez dígitos, correo y opciones permitidas.
+4. El sistema guarda la solicitud con estatus **Pendiente** y le asigna el siguiente turno disponible para el municipio elegido.
+5. El servidor genera el PDF en memoria y lo devuelve como descarga. El documento incluye folio, turno, municipio, datos de contacto y del trámite, fecha de registro y un QR con el CURP.
 
-La instancia compartida `db` es provista por [`DatabaseSingleton`](extensions.py) y se inicializa con la configuración de cada aplicación en [`ApplicationFactory.create_app`](app.py). SQLAlchemy administra el motor, el ciclo de vida de las sesiones, las transacciones y el pool de conexiones. Los modelos se exportan desde `models` y el esquema base se encuentra en `database/ticket_turno.sql`.
+Cada municipio tiene su propio contador persistente. Al mover una solicitud a otro municipio se le asigna un turno nuevo en el destino; si se modifica sin cambiar de municipio, conserva el turno. La combinación de municipio y turno es única en la base de datos. Para consultar o modificar una solicitud pública se necesita el CURP y el número de turno.
 
-## Interfaz
+### Flujo administrativo
 
-Al abrir la aplicación en `/` aparece el formulario de turnos. El enlace **Inicio** abre la página de bienvenida en `/welcome`, mientras que **Generar turno** abre el formulario en `/solicitud`. Las vistas heredan de `templates/base.html`, que proporciona Bootstrap 5.3.3, navegación adaptable y pie de página común. Los estilos propios están en `static/css/style.css`.
+El administrador inicia sesión en **Acceso administradores** y puede:
 
-## Acceso de administradores
+- Consultar solicitudes por coincidencia parcial de CURP o por palabras del nombre y apellidos. La búsqueda muestra hasta 100 resultados.
+- Registrar una solicitud, editar sus datos o eliminarla.
+- Cambiar su estatus entre los disponibles.
+- Consultar las métricas globales o filtrar el tablero por municipio.
+- Agregar, renombrar, activar, desactivar o eliminar municipios, y administrar estatus adicionales.
 
-El acceso está en <http://127.0.0.1:5000/admin/login>. Solo las cuentas activas de la tabla `usuarios` pueden iniciar sesión. El esquema actual no tiene roles separados; por ello, registra en esa tabla únicamente cuentas de administradores. Las contraseñas se guardan con hash, las rutas de administración requieren una sesión autenticada y los formularios de acceso y cierre de sesión usan token CSRF. El CAPTCHA genera un código aleatorio en una imagen PNG, lo valida una sola vez por sesión y no almacena el código en claro.
+Los municipios inactivos dejan de aparecer en el formulario público. Los registros de catálogo que tienen solicitudes asociadas no se pueden eliminar; si se trata de un municipio, puede desactivarse en lugar de eliminarse. Los estatus **Pendiente** y **Resuelto** son registros protegidos del sistema.
 
-Con el entorno virtual activo, crea una cuenta administrativa de forma interactiva:
+## Arquitectura y componentes
 
-```powershell
-flask --app app crear-admin
-```
+La aplicación separa la recepción de peticiones, las reglas de negocio, el acceso a datos y la presentación:
 
-El comando solicita usuario, nombre y una contraseña de al menos 12 caracteres; la contraseña no se imprime ni se agrega al repositorio. Ejecuta el comando una vez por cada administrador autorizado. Protege `SECRET_KEY` con un valor aleatorio propio y no uses la clave de desarrollo en producción. Este CAPTCHA local ayuda a limitar envíos automatizados simples, pero no sustituye servicios anti-bot ni límites de intentos para una instalación expuesta a Internet.
+- **Modelos — `models/`:** clases ORM para `Municipio`, `Estatus`, `Usuario` y `Solicitud`, además de una clase base común. Representan las entidades, sus relaciones y operaciones de dominio.
+- **Controladores — `controllers/`:** reciben las peticiones Flask y coordinan los servicios para devolver páginas HTML, archivos PDF o respuestas JSON. Hay controladores para el sitio público, autenticación, solicitudes administrativas, catálogos y API.
+- **Servicios — `services/`:** encapsulan reglas de autenticación, protección CSRF, validación de solicitudes, asignación de turnos, consultas de catálogos, cálculo de estadísticas y generación de comprobantes.
+- **Vistas — `templates/`:** páginas Jinja2 para bienvenida, formulario público, acceso administrativo, tablero, solicitudes y catálogos.
+- **Recursos del navegador — `static/`:** CSS para la interfaz y JavaScript para el formulario, el CAPTCHA, las confirmaciones administrativas y la actualización de gráficas.
+- **Persistencia — `database/`:** script SQL para crear la base y sus tablas iniciales.
+- **Pruebas — `tests/`:** pruebas de los flujos públicos, autenticación, administración, catálogos, API, tablero y patrones de diseño.
 
-## Menú y cierre de sesión
+El recorrido habitual de una petición es: **navegador → controlador → servicio de dominio → modelo/SQLAlchemy → base de datos**. Para el registro público, la respuesta vuelve en forma de comprobante PDF. Para el tablero, el navegador consulta la API y actualiza las métricas y gráficas.
 
-Con una sesión de administrador, la barra de navegación muestra **Panel**, **Solicitudes**, el submenú **Catálogos** (Municipios y Estatus) y un menú con el nombre de la cuenta que contiene **Cerrar sesión**. La opción de la página actual aparece resaltada. Sin sesión solo se muestran las opciones públicas y **Acceso administradores**.
+### Patrones de diseño
 
-Medidas de seguridad de la parte privada:
+El código incluye tres patrones que permiten separar y reutilizar responsabilidades:
 
-- Cerrar sesión se hace con `POST` y token CSRF, y elimina toda la sesión.
-- Las páginas privadas se envían con `Cache-Control: no-store`, por lo que tras cerrar sesión el botón **Atrás** del navegador no vuelve a mostrar datos.
-- La sesión vence tras `SESSION_MINUTES` minutos de inactividad (30 por omisión, configurable en `.env`); la cookie es `HttpOnly` y `SameSite=Lax`.
+1. **Singleton:** `DatabaseSingleton` proporciona una instancia compartida de SQLAlchemy para la aplicación.
+2. **Factory:** `ApplicationFactory` construye la aplicación Flask y registra sus componentes. `CatalogoFactory` crea descriptores de catálogo de municipios o estatus usando una interfaz común.
+3. **Observer:** `SolicitudEventSubject` notifica eventos como creación, edición, cambio de estatus y eliminación. `AuditLogObserver` registra los eventos en memoria y en el logger de Python. El historial en memoria está limitado a los 200 eventos más recientes; no es una bitácora persistente y se pierde al reiniciar el proceso.
 
-## Tablero (Dashboard) con gráficas y filtro por municipio
+## Modelo de datos
 
-En `/admin` ([`templates/auth/dashboard.html`](templates/auth/dashboard.html)), el administrador cuenta con un tablero analítico responsivo que muestra el estado de las solicitudes (**“Pendiente”** y **“Resuelto”**):
+La base de datos contiene cuatro tablas principales:
 
-- **Filtro dinámico**: Permite seleccionar **Todos los municipios (Total de solicitudes)** o filtrar por un **municipio específico**, actualizando las métricas y gráficas en tiempo real mediante peticiones `fetch` a la API REST (`GET /api/v1/dashboard/estatus`).
-- **Indicadores (KPIs)**: Total de solicitudes, total en estatus *“Pendiente”*, total en estatus *“Resuelto”* y porcentaje de resolución.
-- **Gráficas interactivas (Chart.js)**:
-  1. **Gráfica de Dona**: Proporción de solicitudes *“Pendiente”* vs *“Resuelto”* para el filtro seleccionado.
-  2. **Gráfica de Barras**: Comparativa de solicitudes *“Pendiente”* y *“Resuelto”* desglosadas por municipio.
-- **Tabla resumen por municipio**: Desglose numérico y porcentaje de avance por cada municipio.
+| Tabla | Propósito |
+|---|---|
+| `municipios` | Catálogo de municipios, estado activo y contador del último turno. |
+| `estatus` | Estados asignables a las solicitudes, incluidos los estados base. |
+| `usuarios` | Cuentas administrativas activas o inactivas y hashes de contraseña. |
+| `solicitudes` | Datos del solicitante, municipio, turno, trámite, estatus y fechas de registro y actualización. |
 
-## Estrategia de API REST (`/api/v1`)
+Una solicitud pertenece a un municipio y a un estatus. La base establece unicidad para el CURP y para la combinación de municipio y turno, y utiliza claves foráneas para las relaciones. SQLAlchemy gestiona las consultas y transacciones; al asignar turnos, el servicio bloquea el registro del municipio durante la operación para coordinar la actualización del contador.
 
-El módulo [`api.py`](api.py) y [`ApiController`](controllers/api_controller.py) exponen una API RESTful JSON bajo el prefijo `/api/v1`:
+## Interfaz y tecnologías
+
+- **Servidor:** Python 3, Flask y Flask-SQLAlchemy.
+- **Base de datos:** MySQL o MariaDB, conectada mediante PyMySQL.
+- **Vistas:** Jinja2 y Bootstrap 5.3.3, con estilos propios en `static/css/style.css`.
+- **Interactividad:** JavaScript del navegador; el tablero utiliza Chart.js 4.4.7 para gráficas de dona y barras, con una alternativa de dibujo cuando Chart.js no está disponible.
+- **Comprobantes:** ReportLab genera el PDF y `qrcode` crea la imagen QR; Pillow se utiliza, entre otras cosas, para generar la imagen del CAPTCHA.
+- **Configuración local:** `python-dotenv` carga las variables del archivo `.env`.
+
+Bootstrap y Chart.js se cargan desde CDN en las plantillas, por lo que la interfaz necesita conexión a esos recursos externos si no se sirven localmente.
+
+## API REST
+
+La API devuelve y recibe JSON bajo el prefijo `/api/v1`. Los recursos administrativos requieren una sesión iniciada; las operaciones que modifican datos requieren además el token CSRF en la cabecera `X-CSRF-Token`.
 
 | Método | Ruta | Acceso | Descripción |
-| :--- | :--- | :--- | :--- |
-| `GET` | `/api/v1/municipios` | Público | Lista los municipios activos en formato JSON. |
-| `GET` | `/api/v1/solicitudes/<curp>/<turno>` | Público | Consulta una solicitud pública por CURP y número de turno (consumido por el buscador público). |
-| `GET` | `/api/v1/dashboard/estatus` | Admin | Devuelve conteos y porcentajes de estatus (*“Pendiente”* y *“Resuelto”*), totales o filtrados con `?municipio_id=<id>`. |
-| `GET` | `/api/v1/solicitudes` | Admin | Busca y filtra solicitudes por `criterio` (`curp` o `nombre`), `q`, `municipio_id` y `estatus_id`. |
-| `GET` | `/api/v1/solicitudes/<id>` | Admin | Obtiene el detalle completo de una solicitud por su ID. |
-| `PATCH` | `/api/v1/solicitudes/<id>/estatus` | Admin + CSRF | Actualiza el estatus de una solicitud (*“Pendiente”* / *“Resuelto”*) y notifica al patrón `Observer`. |
-| `DELETE` | `/api/v1/solicitudes/<id>` | Admin + CSRF | Elimina una solicitud y registra el evento en el `Observer`. |
-| `GET` | `/api/v1/auditoria` | Admin | Devuelve el historial de eventos capturados en tiempo real por [`AuditLogObserver`](patterns/observer.py). |
+|---|---|---|---|
+| `GET` | `/api/v1/municipios` | Público | Lista los municipios activos. |
+| `GET` | `/api/v1/solicitudes/<curp>/<turno>` | Público | Consulta los datos públicos de una solicitud; se usa para cargarla y modificarla. |
+| `GET` | `/api/v1/dashboard/estatus` | Administrador | Devuelve métricas globales o filtradas con `?municipio_id=<id>`. |
+| `GET` | `/api/v1/solicitudes` | Administrador | Busca por `criterio` (`nombre` o `curp`) y `q`; admite filtros `municipio_id` y `estatus_id`. |
+| `GET` | `/api/v1/solicitudes/<id>` | Administrador | Devuelve el detalle de una solicitud. |
+| `PATCH` | `/api/v1/solicitudes/<id>/estatus` | Administrador + CSRF | Actualiza el estatus mediante `estatus_id` o `estatus`. |
+| `DELETE` | `/api/v1/solicitudes/<id>` | Administrador + CSRF | Elimina una solicitud. |
+| `GET` | `/api/v1/auditoria` | Administrador | Consulta los eventos disponibles en la bitácora en memoria del proceso. |
 
-## Gestión de solicitudes (administradores)
+Los formularios públicos también usan `POST /buscar-solicitud` para la búsqueda con CURP y turno, y `POST /generar-turno` para registrar o actualizar una solicitud y recibir su comprobante PDF.
 
-Con una sesión de administrador, la opción **Solicitudes** (`/admin/solicitudes`) permite consultar registros por **CURP** (coincidencia parcial) o por **nombre** (cada palabra se busca en nombre y apellidos). Desde los resultados se puede:
+## Seguridad y consideraciones
 
-- **Registrar** una solicitud nueva; el turno se asigna con el mismo contador por municipio que usa el formulario público.
-- **Modificar** los datos de una solicitud; si cambia el municipio se asigna un turno nuevo.
-- **Eliminar** una solicitud, previa confirmación.
-- **Cambiar el estatus** entre “Pendiente” y “Resuelto”.
-
-Todas las acciones requieren sesión activa y token CSRF.
-
-## Catálogos
-
-Los catálogos del modelo de datos se administran desde **Catálogos** en el menú de administración:
-
-- **Municipios** (`/admin/catalogos/municipios`): registrar, renombrar, activar o desactivar y eliminar. Solo los municipios activos aparecen en el formulario público.
-- **Estatus** (`/admin/catalogos/estatus`): registrar, renombrar y eliminar estatus adicionales. “Pendiente” y “Resuelto” los usa el sistema y están protegidos.
-
-Un registro con solicitudes asociadas no se puede eliminar; en el caso de un municipio, desactívalo para retirarlo del formulario. Los nombres no se repiten (sin distinguir mayúsculas).
-
-## Registro, modificación y comprobantes de turno
-
-Las rutas públicas `/` y `/solicitud` permiten registrar una solicitud. Para modificar un registro, el usuario busca la solicitud con el **CURP y el número de turno asignado**; una coincidencia exacta carga sus datos para editarlos. Si cambia el municipio, el sistema asigna un nuevo turno en ese municipio; si no cambia, conserva el turno original.
-
-Cada municipio tiene un contador independiente y persistente que comienza en 1. La fila del municipio se bloquea durante la asignación y la base impone unicidad sobre `(municipio_id, turno)` para evitar turnos repetidos. El contador avanza al registrar una solicitud y al trasladarla a otro municipio; una modificación en el mismo municipio conserva su turno.
-
-Al registrar o actualizar correctamente, el navegador descarga un comprobante PDF con folio, turno, municipio, datos básicos del solicitante, fecha y un código QR que contiene el CURP del alumno solicitante. El PDF se entrega como respuesta directa y no se almacena en el servidor. Para preparar una base existente, ejecuta una vez (el comando se puede repetir):
-
-```powershell
-flask --app app preparar-solicitudes
-```
-
-El comando agrega las columnas faltantes, carga los municipios iniciales que no existan y corrige los contadores para que no queden por debajo de turnos ya registrados. Las instalaciones nuevas pueden importar `database/ticket_turno.sql`. El comprobante confirma el registro, pero no la resolución del trámite.
+- Las contraseñas de los administradores se almacenan como hashes; no se guardan en texto plano.
+- El acceso de administración requiere una cuenta activa. El sistema no define roles diferentes: las cuentas de la tabla `usuarios` tienen acceso administrativo.
+- El inicio de sesión usa un CAPTCHA de seis caracteres y tokens CSRF. El CAPTCHA se valida una sola vez y se guarda como digest en la sesión, no como texto legible.
+- Las rutas privadas requieren sesión; la cookie de sesión se configura como `HttpOnly` y `SameSite=Lax`. La duración por defecto es de 30 minutos y puede cambiarse con `SESSION_MINUTES`.
+- Las páginas administrativas se envían con encabezados para evitar su almacenamiento en caché.
+- Para una instalación real, configura un `SECRET_KEY` aleatorio y privado, protege las credenciales de la base de datos y no uses el servidor de desarrollo de Flask ni `--debug` en producción. El CAPTCHA local no reemplaza límites de intentos ni otras medidas antiabuso.
+- El PDF se genera y se entrega directamente; no se guarda en el servidor. El QR contiene el CURP, por lo que el comprobante debe tratarse como información personal.
 
 ## Requisitos
 
 - Python 3.11 o superior.
-- MySQL 8.0 / MariaDB 10.4 o compatible.
-- Git (opcional, para clonar y publicar el proyecto).
+- MySQL 8.0, MariaDB 10.4 o un servidor compatible.
+- Git para clonar el repositorio (opcional).
 
-## Preparar el entorno
+## Instalación y ejecución en Windows
 
-Desde la carpeta raíz del proyecto, crea y activa un entorno virtual.
+Los comandos siguientes se ejecutan desde la carpeta raíz del proyecto.
 
-### Windows (PowerShell)
+### 1. Crear el entorno e instalar dependencias
 
 ```powershell
 py -3 -m venv .venv
@@ -140,141 +136,111 @@ pip install -r requirements.txt
 Copy-Item .env.example .env
 ```
 
-Si PowerShell bloquea la activación, permite scripts para la sesión actual con `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass` y vuelve a activar el entorno.
-
-### macOS / Linux
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
-pip install -r requirements.txt
-cp .env.example .env
-```
-
-Edita `.env` y configura las credenciales de tu MySQL local. Define también un `SECRET_KEY` aleatorio; no compartas ni subas ese archivo al repositorio.
-
-## Preparar la base de datos
-
-Con MySQL iniciado y un usuario con permisos para crear bases de datos, importa el esquema incluido desde la carpeta raíz del proyecto.
-
-### Windows (PowerShell)
+Si PowerShell bloquea la activación del entorno, permite scripts solo para la sesión actual y vuelve a activarlo:
 
 ```powershell
-$env:Path += ";$env:ProgramFiles\MySQL\MySQL Server 8.0\bin"
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\.venv\Scripts\Activate.ps1
+```
+
+Edita `.env` con los datos de tu instalación. Las variables disponibles son:
+
+| Variable | Descripción | Valor de ejemplo |
+|---|---|---|
+| `SECRET_KEY` | Clave privada de Flask para sesiones y CAPTCHA. Reemplaza el valor de ejemplo por uno aleatorio. | `replace-with-a-random-secret` |
+| `DB_HOST` | Dirección del servidor de base de datos. | `127.0.0.1` |
+| `DB_PORT` | Puerto de MySQL o MariaDB. | `3306` |
+| `DB_NAME` | Nombre de la base de datos. | `ticket_turno` |
+| `DB_USER` | Usuario de base de datos. | `root` |
+| `DB_PASSWORD` | Contraseña de base de datos. | (vacía en la plantilla) |
+| `SESSION_MINUTES` | Duración de la sesión administrativa en minutos. | `30` |
+
+No publiques el archivo `.env` ni incluyas sus valores en capturas o documentación compartida.
+
+### 2. Crear la base de datos
+
+Inicia MySQL/MariaDB y carga el script incluido. En Windows, desde PowerShell:
+
+```powershell
 cmd /c "mysql -u root -p < database\ticket_turno.sql"
 ```
 
-Si usas XAMPP en `C:\xampp`:
+Si usas XAMPP, puedes ejecutar:
 
 ```powershell
 cmd /c "C:\xampp\mysql\bin\mysql.exe -u root < database\ticket_turno.sql"
 ```
 
-### macOS / Linux
+El script crea `ticket_turno`, las tablas y los municipios y estatus iniciales. Si cambiaste nombre, usuario, contraseña, host o puerto, actualiza las variables correspondientes en `.env`.
 
-```bash
-mysql -u root -p < database/ticket_turno.sql
+Para una base ya existente de una versión anterior, el comando siguiente es repetible: agrega las columnas de solicitud que falten, verifica los municipios iniciales y ajusta los contadores de turno para que no queden por debajo de los turnos registrados.
+
+```powershell
+flask --app app preparar-solicitudes
 ```
 
-Si el usuario o la base de datos tienen otros valores, ajusta el comando y las variables `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT` y `DB_NAME` en `.env`. El script SQL crea la base `ticket_turno`, sus tablas y los estados iniciales.
+### 3. Crear una cuenta administrativa
 
-## Ejecutar la aplicación y pruebas
+Con la base de datos configurada, ejecuta el comando y responde las preguntas interactivas:
 
-Con el entorno virtual activo y `.env` configurado:
+```powershell
+flask --app app crear-admin
+```
 
-```bash
+El comando solicita usuario, nombre completo y contraseña. La contraseña debe tener al menos 12 caracteres y se guarda como hash.
+
+### 4. Iniciar la aplicación
+
+```powershell
 flask --app app run --debug
 ```
 
-Abre <http://127.0.0.1:5000>. La opción `--debug` es solo para desarrollo; no la uses en producción.
+Abre <http://127.0.0.1:5000>. Las rutas principales son:
 
-Para ejecutar la suite completa de pruebas automatizadas (40 pruebas unitarias y de integración):
+- `/` y `/solicitud`: formulario público para registrar, buscar y modificar solicitudes.
+- `/welcome`: página de bienvenida.
+- `/admin/login`: acceso del administrador.
+- `/admin`: tablero de control.
+- `/admin/solicitudes`: búsqueda y gestión de solicitudes.
+- `/admin/catalogos/municipios` y `/admin/catalogos/estatus`: administración de catálogos.
 
-```bash
+`--debug` se recomienda únicamente para desarrollo local.
+
+## Pruebas
+
+Las pruebas usan una base SQLite en memoria configurada por los propios tests; no requieren conectarse a la base MySQL de la aplicación.
+
+```powershell
 python -m unittest discover -s tests -v
 ```
 
-Para comprobar la configuración de dependencias:
+La suite comprueba, entre otros aspectos, la asignación y modificación de turnos, la creación de PDF y QR, el acceso y cierre de sesión, la protección CSRF, las operaciones de administración y catálogos, los endpoints REST, el cálculo de métricas y los patrones de diseño.
 
-```bash
-python -m pip check
-```
-
-## Estructura
+## Estructura del proyecto
 
 ```text
 .
-├── app.py                        # ApplicationFactory y punto de entrada Flask
-├── api.py                        # Blueprint de la API REST (/api/v1)
-├── admin.py                      # Blueprint de administración de solicitudes
-├── auth.py                       # Blueprint de autenticación, CAPTCHA y sesión
-├── catalogos.py                  # Blueprint de CRUD de catálogos
-├── solicitudes.py                # Fachada de validación y asignación de turnos
-├── receipts.py                   # Fachada de generación de comprobantes PDF y QR
-├── config.py                     # Configuración y conexión MySQL desde variables de entorno
-├── extensions.py                 # DatabaseSingleton y extensión compartida SQLAlchemy
-├── models/                       # Capa Modelo (MVC / ORM Orientado a Objetos)
-│   ├── __init__.py               # Exportación de modelos
-│   └── models.py                 # BaseModel, Municipio, Estatus, Usuario, Solicitud
-├── controllers/                  # Capa Controlador (MVC Orientado a Objetos)
-│   ├── __init__.py
-│   ├── public_controller.py      # PublicController
-│   ├── auth_controller.py        # AuthController (Login, CAPTCHA y Dashboard)
-│   ├── admin_controller.py       # AdminSolicitudesController
-│   ├── catalogo_controller.py    # CatalogoController
-│   └── api_controller.py         # ApiController (/api/v1)
-├── services/                     # Capa de Servicios de Negocio (POO)
-│   ├── __init__.py
-│   ├── auth_service.py           # AuthService, CaptchaService, CsrfProtectionService
-│   ├── solicitud_service.py      # SolicitudService, SolicitudValidator, TurnAllocatorService
-│   ├── catalogo_service.py       # CatalogoService
-│   ├── dashboard_service.py      # DashboardService (métricas y agregaciones ORM)
-│   └── receipt_service.py        # QrCodeBuilder, TicketReceiptGenerator
-├── patterns/                     # Patrones de Diseño GoF
-│   ├── __init__.py
-│   ├── singleton.py              # Patrón Singleton (DatabaseSingleton)
-│   ├── factory.py                # Patrón Factory (CatalogoFactory y descriptores polimórficos)
-│   └── observer.py               # Patrón Observer (SolicitudEventSubject y AuditLogObserver)
+├── app.py                       # Fábrica y punto de entrada de Flask; comandos CLI
+├── admin.py                     # Registro del blueprint de administración
+├── api.py                       # Registro del blueprint REST
+├── auth.py                      # Fachada de autenticación y protección de rutas
+├── catalogos.py                 # Registro del blueprint de catálogos
+├── solicitudes.py               # Fachada de validación y asignación de turnos
+├── receipts.py                  # Fachada de generación de PDF y QR
+├── config.py                    # Configuración de aplicación y conexión a MySQL
+├── extensions.py                # Singleton y extensión SQLAlchemy
+├── controllers/                 # Controladores MVC y rutas de cada área
+├── services/                    # Servicios de autenticación, negocio y estadísticas
+├── models/                      # Modelos ORM y entidades del dominio
+├── patterns/                    # Implementaciones Singleton, Factory y Observer
 ├── database/
-│   └── ticket_turno.sql          # Esquema MySQL y datos iniciales
-├── templates/                    # Capa Vista (MVC)
-│   ├── base.html                 # Layout compartido: Bootstrap, navbar y footer
-│   ├── welcome.html              # Página de bienvenida (/welcome)
-│   ├── index.html                # Formulario público para generar y modificar turnos
-│   ├── auth/
-│   │   ├── login.html            # Acceso de administradores con CAPTCHA
-│   │   └── dashboard.html        # Tablero con gráficas de estatus y filtro por municipio
-│   └── admin/
-│       ├── solicitudes.html      # Consulta y acciones sobre solicitudes
-│       ├── solicitud_form.html   # Alta y edición de solicitudes
-│       ├── catalogo.html         # Listado y alta de un catálogo
-│       └── catalogo_form.html    # Edición de un registro de catálogo
+│   └── ticket_turno.sql         # Esquema y datos iniciales de MySQL
+├── templates/                   # Plantillas Jinja2 de la interfaz
 ├── static/
-│   ├── css/style.css             # Estilos de la aplicación y del Dashboard
-│   ├── js/captcha.js             # Actualización del CAPTCHA
-│   ├── js/admin.js               # Confirmación de acciones administrativas
-│   ├── js/dashboard.js           # DashboardController (Chart.js + consumo de API REST)
-│   ├── js/script.js              # Validación y consumo REST del formulario público
-│   └── img/logo.jpg
-├── tests/
-│   ├── test_auth.py              # Pruebas de acceso y CAPTCHA
-│   ├── test_public_requests.py   # Pruebas de registro, edición, PDF y QR
-│   ├── test_admin_requests.py    # Pruebas de la gestión administrativa de solicitudes
-│   ├── test_catalogos.py         # Pruebas del CRUD de catálogos
-│   ├── test_patterns_oop.py      # Pruebas de Singleton, Factory, Observer y POO
-│   ├── test_api_rest.py          # Pruebas de los endpoints de la API REST (/api/v1)
-│   └── test_dashboard.py         # Pruebas del Tablero (Dashboard) y filtros
-├── requirements.txt
-└── .env.example                  # Plantilla de configuración; no contiene secretos
-```
-
-## Publicar en GitHub
-
-El archivo `.gitignore` excluye el entorno virtual, cachés y `.env`. Antes de publicar, revisa que no haya claves, contraseñas ni datos personales en los cambios:
-
-```bash
-git status --short
-git diff --cached
-git push -u origin seba-branch
+│   ├── css/style.css            # Estilos propios
+│   ├── js/                      # Comportamiento del formulario, panel y administración
+│   └── img/logo.jpg             # Logotipo
+├── tests/                       # Pruebas automatizadas
+├── requirements.txt             # Dependencias de Python
+└── .env.example                 # Plantilla de variables de entorno
 ```
