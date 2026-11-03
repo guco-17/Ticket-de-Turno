@@ -3,6 +3,7 @@ from flask import Flask
 from sqlalchemy import inspect
 
 from admin import admin
+from api import api
 from auth import auth, get_csrf_token
 from catalogos import catalogos
 from config import Config
@@ -37,6 +38,7 @@ class ApplicationFactory:
         app.register_blueprint(auth)
         app.register_blueprint(admin)
         app.register_blueprint(catalogos)
+        app.register_blueprint(api)
         self.public_controller.register_routes(app)
         self._register_context_processors(app)
         self._register_cli_commands(app)

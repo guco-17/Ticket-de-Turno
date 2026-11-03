@@ -108,13 +108,11 @@ document.addEventListener('DOMContentLoaded', () => {
         showMessage(searchMessage, 'Buscando solicitud…', '');
 
         try {
-            const response = await fetch('/buscar-solicitud', {
-                method: 'POST',
+            const response = await fetch(`/api/v1/solicitudes/${encodeURIComponent(curp)}/${encodeURIComponent(turn)}`, {
+                method: 'GET',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-Token': csrfToken
-                },
-                body: JSON.stringify({ curp, turno: turn })
+                    'Accept': 'application/json'
+                }
             });
             const result = await response.json();
             if (!response.ok) {

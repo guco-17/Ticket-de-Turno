@@ -4,6 +4,7 @@ from services.auth_service import (
     CsrfProtectionService,
 )
 from services.catalogo_service import CatalogoService
+from services.dashboard_service import DashboardService
 from services.receipt_service import QrCodeBuilder, TicketReceiptGenerator
 from services.solicitud_service import (
     SolicitudService,
@@ -16,10 +17,10 @@ __all__ = [
     "CaptchaService",
     "CatalogoService",
     "CsrfProtectionService",
+    "DashboardService",
     "QrCodeBuilder",
     "SolicitudService",
     "SolicitudValidator",
     "TicketReceiptGenerator",
     "TurnAllocatorService",
 ]
-
