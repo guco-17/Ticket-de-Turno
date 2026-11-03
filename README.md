@@ -1,12 +1,38 @@
 # Ticket de Turno
 
-Aplicación web en Flask para capturar solicitudes de atención y generar un ticket de turno. El proyecto incluye una base de datos MySQL, modelos SQLAlchemy y un layout responsivo con Bootstrap 5.
+Aplicación web en Flask para capturar solicitudes de atención y generar un ticket de turno. El proyecto está construido bajo una **arquitectura MVC totalmente Orientada a Objetos (POO)**, incluye una base de datos MySQL administrada mediante **ORM (SQLAlchemy)**, **API REST (`/api/v1`)**, **patrones de diseño (`Singleton`, `Factory` y `Observer`)**, un **tablero (Dashboard) con gráficas interactivas** y un layout responsivo con Bootstrap 5.
 
-El formulario público registra y modifica solicitudes en MySQL, asigna turnos consecutivos por municipio y descarga un comprobante PDF.
+El formulario público registra y modifica solicitudes en MySQL, asigna turnos consecutivos por municipio y descarga un comprobante PDF con código QR.
+
+## Arquitectura MVC y Programación Orientada a Objetos (POO)
+
+El sistema separa sus responsabilidades en capas orientadas a objetos:
+
+- **Modelos (`models/`)**: [`BaseModel`](models/models.py), [`Municipio`](models/models.py), [`Estatus`](models/models.py), [`Usuario`](models/models.py) y [`Solicitud`](models/models.py) encapsulan el mapeo ORM y los métodos de negocio (`avanzar_turno`, `es_protegido`, `establecer_password`, `verificar_password`, `nombre_completo`, `actualizar_datos`, `to_dict`, `to_public_dict`).
+- **Vistas (`templates/` y `static/`)**: Plantillas Jinja2 responsivas con Bootstrap 5.3.3 y controladores Frontend en JavaScript orientado a objetos ([`DashboardController`](static/js/dashboard.js)).
+- **Controladores (`controllers/`)**: Clases controladoras que reciben las peticiones HTTP, coordinan los servicios y devuelven vistas HTML o respuestas JSON:
+  - [`PublicController`](controllers/public_controller.py): Portal público y generación de comprobantes PDF.
+  - [`AuthController`](controllers/auth_controller.py): Login con CAPTCHA, cierre de sesión y vista del Dashboard.
+  - [`AdminSolicitudesController`](controllers/admin_controller.py): Consulta, alta, edición, cambio de estatus y eliminación de solicitudes.
+  - [`CatalogoController`](controllers/catalogo_controller.py): CRUD de los catálogos del modelo de datos.
+  - [`ApiController`](controllers/api_controller.py): Endpoints de la API REST (`/api/v1`).
+- **Servicios de Dominio (`services/`)**: Clases con responsabilidad única para la lógica de negocio: [`AuthService`](services/auth_service.py), [`CaptchaService`](services/auth_service.py), [`CsrfProtectionService`](services/auth_service.py), [`SolicitudService`](services/solicitud_service.py), [`SolicitudValidator`](services/solicitud_service.py), [`TurnAllocatorService`](services/solicitud_service.py), [`CatalogoService`](services/catalogo_service.py), [`DashboardService`](services/dashboard_service.py), [`QrCodeBuilder`](services/receipt_service.py) y [`TicketReceiptGenerator`](services/receipt_service.py).
+
+## Patrones de Diseño Implementados (`patterns/`)
+
+El proyecto implementa tres patrones de diseño clásicos orientados a objetos:
+
+1. **Patrón Singleton (`patterns/singleton.py` y `extensions.py`)**:
+   - La clase [`DatabaseSingleton`](extensions.py) garantiza mediante `__new__` que exista una única instancia compartida del gestor ORM `SQLAlchemy` (`db`) en todo el ciclo de vida de la aplicación.
+2. **Patrón Factory (`patterns/factory.py` y `app.py`)**:
+   - [`CatalogoFactory`](patterns/factory.py) instancia polimórficamente los descriptores de catálogo ([`MunicipioCatalogoDescriptor`](patterns/factory.py) y [`EstatusCatalogoDescriptor`](patterns/factory.py), subclases de la clase abstracta [`CatalogoDescriptor`](patterns/factory.py)).
+   - [`ApplicationFactory`](app.py) construye y configura la instancia de la aplicación Flask, registrando Blueprints, extensiones y comandos CLI.
+3. **Patrón Observer (`patterns/observer.py`)**:
+   - [`SolicitudEventSubject`](patterns/observer.py) (Sujeto observable) notifica automáticamente a los observadores suscritos (que implementan la interfaz abstracta [`SolicitudObserver`](patterns/observer.py), como [`AuditLogObserver`](patterns/observer.py)) cada vez que una solicitud se registra, modifica, cambia de estatus entre *“Pendiente”* y *“Resuelto”* o se elimina.
 
 ## ORM y conexión a la base de datos
 
-La instancia compartida `db` se declara una sola vez en `extensions.py` y se inicializa con la configuración de cada aplicación en `create_app`. Este patrón de extensión compartida evita crear conexiones manuales globales: SQLAlchemy administra el motor, el ciclo de vida de las sesiones y el pool de conexiones. Los modelos se exportan desde `models` y se registran al crear la aplicación. El esquema se administra mediante `database/ticket_turno.sql`.
+La instancia compartida `db` es provista por [`DatabaseSingleton`](extensions.py) y se inicializa con la configuración de cada aplicación en [`ApplicationFactory.create_app`](app.py). SQLAlchemy administra el motor, el ciclo de vida de las sesiones, las transacciones y el pool de conexiones. Los modelos se exportan desde `models` y el esquema base se encuentra en `database/ticket_turno.sql`.
 
 ## Interfaz
 
@@ -33,6 +59,32 @@ Medidas de seguridad de la parte privada:
 - Cerrar sesión se hace con `POST` y token CSRF, y elimina toda la sesión.
 - Las páginas privadas se envían con `Cache-Control: no-store`, por lo que tras cerrar sesión el botón **Atrás** del navegador no vuelve a mostrar datos.
 - La sesión vence tras `SESSION_MINUTES` minutos de inactividad (30 por omisión, configurable en `.env`); la cookie es `HttpOnly` y `SameSite=Lax`.
+
+## Tablero (Dashboard) con gráficas y filtro por municipio
+
+En `/admin` ([`templates/auth/dashboard.html`](templates/auth/dashboard.html)), el administrador cuenta con un tablero analítico responsivo que muestra el estado de las solicitudes (**“Pendiente”** y **“Resuelto”**):
+
+- **Filtro dinámico**: Permite seleccionar **Todos los municipios (Total de solicitudes)** o filtrar por un **municipio específico**, actualizando las métricas y gráficas en tiempo real mediante peticiones `fetch` a la API REST (`GET /api/v1/dashboard/estatus`).
+- **Indicadores (KPIs)**: Total de solicitudes, total en estatus *“Pendiente”*, total en estatus *“Resuelto”* y porcentaje de resolución.
+- **Gráficas interactivas (Chart.js)**:
+  1. **Gráfica de Dona**: Proporción de solicitudes *“Pendiente”* vs *“Resuelto”* para el filtro seleccionado.
+  2. **Gráfica de Barras**: Comparativa de solicitudes *“Pendiente”* y *“Resuelto”* desglosadas por municipio.
+- **Tabla resumen por municipio**: Desglose numérico y porcentaje de avance por cada municipio.
+
+## Estrategia de API REST (`/api/v1`)
+
+El módulo [`api.py`](api.py) y [`ApiController`](controllers/api_controller.py) exponen una API RESTful JSON bajo el prefijo `/api/v1`:
+
+| Método | Ruta | Acceso | Descripción |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/v1/municipios` | Público | Lista los municipios activos en formato JSON. |
+| `GET` | `/api/v1/solicitudes/<curp>/<turno>` | Público | Consulta una solicitud pública por CURP y número de turno (consumido por el buscador público). |
+| `GET` | `/api/v1/dashboard/estatus` | Admin | Devuelve conteos y porcentajes de estatus (*“Pendiente”* y *“Resuelto”*), totales o filtrados con `?municipio_id=<id>`. |
+| `GET` | `/api/v1/solicitudes` | Admin | Busca y filtra solicitudes por `criterio` (`curp` o `nombre`), `q`, `municipio_id` y `estatus_id`. |
+| `GET` | `/api/v1/solicitudes/<id>` | Admin | Obtiene el detalle completo de una solicitud por su ID. |
+| `PATCH` | `/api/v1/solicitudes/<id>/estatus` | Admin + CSRF | Actualiza el estatus de una solicitud (*“Pendiente”* / *“Resuelto”*) y notifica al patrón `Observer`. |
+| `DELETE` | `/api/v1/solicitudes/<id>` | Admin + CSRF | Elimina una solicitud y registra el evento en el `Observer`. |
+| `GET` | `/api/v1/auditoria` | Admin | Devuelve el historial de eventos capturados en tiempo real por [`AuditLogObserver`](patterns/observer.py). |
 
 ## Gestión de solicitudes (administradores)
 
@@ -71,7 +123,7 @@ El comando agrega las columnas faltantes, carga los municipios iniciales que no 
 ## Requisitos
 
 - Python 3.11 o superior.
-- MySQL 8.0 o compatible.
+- MySQL 8.0 / MariaDB 10.4 o compatible.
 - Git (opcional, para clonar y publicar el proyecto).
 
 ## Preparar el entorno
@@ -113,7 +165,11 @@ $env:Path += ";$env:ProgramFiles\MySQL\MySQL Server 8.0\bin"
 cmd /c "mysql -u root -p < database\ticket_turno.sql"
 ```
 
-Si instalaste MySQL en otra ubicación, agrega a `PATH` la carpeta que contiene `mysql.exe`.
+Si usas XAMPP en `C:\xampp`:
+
+```powershell
+cmd /c "C:\xampp\mysql\bin\mysql.exe -u root < database\ticket_turno.sql"
+```
 
 ### macOS / Linux
 
@@ -123,7 +179,7 @@ mysql -u root -p < database/ticket_turno.sql
 
 Si el usuario o la base de datos tienen otros valores, ajusta el comando y las variables `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT` y `DB_NAME` en `.env`. El script SQL crea la base `ticket_turno`, sus tablas y los estados iniciales.
 
-## Ejecutar la aplicación
+## Ejecutar la aplicación y pruebas
 
 Con el entorno virtual activo y `.env` configurado:
 
@@ -132,6 +188,12 @@ flask --app app run --debug
 ```
 
 Abre <http://127.0.0.1:5000>. La opción `--debug` es solo para desarrollo; no la uses en producción.
+
+Para ejecutar la suite completa de pruebas automatizadas (40 pruebas unitarias y de integración):
+
+```bash
+python -m unittest discover -s tests -v
+```
 
 Para comprobar la configuración de dependencias:
 
@@ -143,44 +205,68 @@ python -m pip check
 
 ```text
 .
-├── app.py                 # Aplicación Flask y rutas HTTP
-├── admin.py               # Gestión de solicitudes para administradores
-├── catalogos.py           # CRUD de los catálogos de municipios y estatus
-├── solicitudes.py         # Validación de solicitudes y asignación de turnos
-├── receipts.py            # Generación del comprobante PDF
-├── config.py              # Configuración y conexión MySQL desde variables de entorno
-├── extensions.py          # Extensiones Flask compartidas (SQLAlchemy)
-├── models/
-│   ├── __init__.py        # Exportación de modelos
-│   └── models.py          # Modelos de la base de datos
+├── app.py                        # ApplicationFactory y punto de entrada Flask
+├── api.py                        # Blueprint de la API REST (/api/v1)
+├── admin.py                      # Blueprint de administración de solicitudes
+├── auth.py                       # Blueprint de autenticación, CAPTCHA y sesión
+├── catalogos.py                  # Blueprint de CRUD de catálogos
+├── solicitudes.py                # Fachada de validación y asignación de turnos
+├── receipts.py                   # Fachada de generación de comprobantes PDF y QR
+├── config.py                     # Configuración y conexión MySQL desde variables de entorno
+├── extensions.py                 # DatabaseSingleton y extensión compartida SQLAlchemy
+├── models/                       # Capa Modelo (MVC / ORM Orientado a Objetos)
+│   ├── __init__.py               # Exportación de modelos
+│   └── models.py                 # BaseModel, Municipio, Estatus, Usuario, Solicitud
+├── controllers/                  # Capa Controlador (MVC Orientado a Objetos)
+│   ├── __init__.py
+│   ├── public_controller.py      # PublicController
+│   ├── auth_controller.py        # AuthController (Login, CAPTCHA y Dashboard)
+│   ├── admin_controller.py       # AdminSolicitudesController
+│   ├── catalogo_controller.py    # CatalogoController
+│   └── api_controller.py         # ApiController (/api/v1)
+├── services/                     # Capa de Servicios de Negocio (POO)
+│   ├── __init__.py
+│   ├── auth_service.py           # AuthService, CaptchaService, CsrfProtectionService
+│   ├── solicitud_service.py      # SolicitudService, SolicitudValidator, TurnAllocatorService
+│   ├── catalogo_service.py       # CatalogoService
+│   ├── dashboard_service.py      # DashboardService (métricas y agregaciones ORM)
+│   └── receipt_service.py        # QrCodeBuilder, TicketReceiptGenerator
+├── patterns/                     # Patrones de Diseño GoF
+│   ├── __init__.py
+│   ├── singleton.py              # Patrón Singleton (DatabaseSingleton)
+│   ├── factory.py                # Patrón Factory (CatalogoFactory y descriptores polimórficos)
+│   └── observer.py               # Patrón Observer (SolicitudEventSubject y AuditLogObserver)
 ├── database/
-│   └── ticket_turno.sql   # Esquema y datos iniciales
-├── templates/
-│   ├── base.html          # Layout compartido: Bootstrap, navbar y footer
-│   ├── welcome.html       # Página de bienvenida (/welcome)
-│   └── index.html         # Formulario para generar turnos
-│   └── auth/
-│       ├── login.html     # Acceso de administradores
-│       └── dashboard.html # Página protegida
+│   └── ticket_turno.sql          # Esquema MySQL y datos iniciales
+├── templates/                    # Capa Vista (MVC)
+│   ├── base.html                 # Layout compartido: Bootstrap, navbar y footer
+│   ├── welcome.html              # Página de bienvenida (/welcome)
+│   ├── index.html                # Formulario público para generar y modificar turnos
+│   ├── auth/
+│   │   ├── login.html            # Acceso de administradores con CAPTCHA
+│   │   └── dashboard.html        # Tablero con gráficas de estatus y filtro por municipio
 │   └── admin/
-│       ├── solicitudes.html     # Consulta y acciones sobre solicitudes
-│       ├── solicitud_form.html  # Alta y edición de solicitudes
-│       ├── catalogo.html        # Listado y alta de un catálogo
-│       └── catalogo_form.html   # Edición de un registro de catálogo
+│       ├── solicitudes.html      # Consulta y acciones sobre solicitudes
+│       ├── solicitud_form.html   # Alta y edición de solicitudes
+│       ├── catalogo.html         # Listado y alta de un catálogo
+│       └── catalogo_form.html    # Edición de un registro de catálogo
 ├── static/
-│   ├── css/style.css      # Estilos de la aplicación
-│   ├── js/captcha.js      # Actualización del CAPTCHA
-│   ├── js/admin.js        # Confirmación de acciones administrativas
-│   ├── img/logo.jpg
-│   └── js/script.js       # Validación del formulario de turnos
-├── auth.py                # Autenticación, CAPTCHA y protección de rutas
+│   ├── css/style.css             # Estilos de la aplicación y del Dashboard
+│   ├── js/captcha.js             # Actualización del CAPTCHA
+│   ├── js/admin.js               # Confirmación de acciones administrativas
+│   ├── js/dashboard.js           # DashboardController (Chart.js + consumo de API REST)
+│   ├── js/script.js              # Validación y consumo REST del formulario público
+│   └── img/logo.jpg
 ├── tests/
-│   ├── test_auth.py       # Pruebas de acceso y CAPTCHA
-│   ├── test_public_requests.py # Pruebas de registro, edición y turnos
-│   ├── test_admin_requests.py  # Pruebas de la gestión de solicitudes
-│   └── test_catalogos.py       # Pruebas del CRUD de catálogos
+│   ├── test_auth.py              # Pruebas de acceso y CAPTCHA
+│   ├── test_public_requests.py   # Pruebas de registro, edición, PDF y QR
+│   ├── test_admin_requests.py    # Pruebas de la gestión administrativa de solicitudes
+│   ├── test_catalogos.py         # Pruebas del CRUD de catálogos
+│   ├── test_patterns_oop.py      # Pruebas de Singleton, Factory, Observer y POO
+│   ├── test_api_rest.py          # Pruebas de los endpoints de la API REST (/api/v1)
+│   └── test_dashboard.py         # Pruebas del Tablero (Dashboard) y filtros
 ├── requirements.txt
-└── .env.example           # Plantilla de configuración; no contiene secretos
+└── .env.example                  # Plantilla de configuración; no contiene secretos
 ```
 
 ## Publicar en GitHub
@@ -189,11 +275,6 @@ El archivo `.gitignore` excluye el entorno virtual, cachés y `.env`. Antes de p
 
 ```bash
 git status --short
-git add .gitignore .env.example README.md app.py auth.py config.py extensions.py requirements.txt database models static templates tests
 git diff --cached
-git commit -m "Configura entorno inicial del proyecto"
-git remote add origin https://github.com/USUARIO/REPOSITORIO.git
-git push -u origin main
+git push -u origin seba-branch
 ```
-
-Si ya existe `origin`, no vuelvas a agregarlo; verifica con `git remote -v` y usa `git push -u origin main`. Sustituye la URL de ejemplo por la del repositorio creado en GitHub.
