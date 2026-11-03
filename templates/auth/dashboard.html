@@ -1,17 +1,185 @@
 {% extends "base.html" %}
 
-{% block title %}Administración | Ticket de Turno{% endblock %}
+{% block title %}Tablero de Administración | Ticket de Turno{% endblock %}
 
 {% block content %}
-<section class="mx-auto page-content">
+<section class="mx-auto dashboard-container">
     <div class="card shadow-sm mb-4">
         <div class="card-body p-4">
-            <h1 class="h3">Panel de administración</h1>
-            <p class="mb-0">Acceso autenticado para <strong>{{ session.get("admin_username") }}</strong>.</p>
+            <div class="row g-3 align-items-center justify-content-between">
+                <div class="col-lg-6">
+                    <span class="badge text-bg-light border text-secondary mb-2">Tablero de control (Dashboard)</span>
+                    <h1 class="h3 mb-1">Estadísticas de solicitudes</h1>
+                    <p class="text-body-secondary mb-0">
+                        Sesión activa: <strong>{{ session.get("admin_username") }}</strong> ·
+                        Vista actual: <strong id="etiqueta-filtro-actual">{{ estadisticas.filtro.municipio_nombre }}</strong>
+                    </p>
+                </div>
+                <div class="col-lg-6">
+                    <form id="dashboard-filter-form" method="get" action="{{ url_for('auth.dashboard') }}" class="row g-2 align-items-end justify-content-lg-end">
+                        <div class="col-sm-8 col-md-7">
+                            <label for="filtro-municipio" class="form-label small fw-semibold mb-1">
+                                Filtrar por municipio o total
+                            </label>
+                            <select id="filtro-municipio" name="municipio_id" class="form-select">
+                                <option value="all" {% if estadisticas.filtro.municipio_id is none %}selected{% endif %}>
+                                    Todos los municipios (Total de solicitudes)
+                                </option>
+                                {% for mun in estadisticas.municipios %}
+                                <option value="{{ mun.id }}" {% if estadisticas.filtro.municipio_id == mun.id %}selected{% endif %}>
+                                    {{ mun.nombre }}{% if not mun.activo %} (Inactivo){% endif %}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-sm-4 col-md-auto d-flex gap-2">
+                            <button type="submit" id="btn-aplicar-filtro" class="btn btn-primary w-100">
+                                Filtrar
+                            </button>
+                            <button type="button" id="btn-recargar-dashboard" class="btn btn-outline-secondary" title="Actualizar datos desde API REST">
+                                Actualizar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
     </div>
+
+    <div id="dashboard-alerta" class="alert alert-danger d-none" role="alert"></div>
+
+    <!-- Tarjetas de indicadores (KPIs) -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-lg-3">
+            <div class="card shadow-sm h-100 kpi-card kpi-total">
+                <div class="card-body p-3 p-md-4">
+                    <span class="text-body-secondary small fw-semibold text-uppercase d-block mb-1">Total de solicitudes</span>
+                    <div id="kpi-total" class="display-6 fw-bold mb-1">{{ estadisticas.resumen.total }}</div>
+                    <span class="small text-body-secondary" id="kpi-subtitulo-filtro">{{ estadisticas.filtro.municipio_nombre }}</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="card shadow-sm h-100 kpi-card kpi-pendiente">
+                <div class="card-body p-3 p-md-4">
+                    <span class="text-body-secondary small fw-semibold text-uppercase d-block mb-1">Estatus “Pendiente”</span>
+                    <div id="kpi-pendientes" class="display-6 fw-bold text-warning-emphasis mb-1">{{ estadisticas.resumen.pendientes }}</div>
+                    <span class="badge status-badge-pendiente">Por atender</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="card shadow-sm h-100 kpi-card kpi-resuelto">
+                <div class="card-body p-3 p-md-4">
+                    <span class="text-body-secondary small fw-semibold text-uppercase d-block mb-1">Estatus “Resuelto”</span>
+                    <div id="kpi-resueltos" class="display-6 fw-bold text-success mb-1">{{ estadisticas.resumen.resueltos }}</div>
+                    <span class="badge status-badge-resuelto">Atendidas</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="card shadow-sm h-100 kpi-card kpi-avance">
+                <div class="card-body p-3 p-md-4">
+                    <span class="text-body-secondary small fw-semibold text-uppercase d-block mb-1">Porcentaje resuelto</span>
+                    <div id="kpi-porcentaje" class="display-6 fw-bold mb-2">{{ estadisticas.resumen.porcentaje_resuelto }}%</div>
+                    <div class="progress" style="height: 8px;" role="progressbar" aria-label="Porcentaje de solicitudes resueltas">
+                        <div id="kpi-barra-progreso" class="progress-bar bg-success" style="width: {{ estadisticas.resumen.porcentaje_resuelto }}%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sección de Gráficas -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-5">
+            <div class="card shadow-sm h-100">
+                <div class="card-body p-4 d-flex flex-column">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <h2 class="h5 mb-1">Proporción por estatus</h2>
+                            <p class="text-body-secondary small mb-0" id="subtitulo-grafica-estatus">
+                                Comparativa “Pendiente” vs “Resuelto” ({{ estadisticas.filtro.municipio_nombre }})
+                            </p>
+                        </div>
+                        <span class="badge text-bg-light border">Dona</span>
+                    </div>
+                    <div class="chart-box flex-grow-1 d-flex align-items-center justify-content-center">
+                        <canvas id="estatus-chart" aria-label="Gráfica de proporción de estatus Pendiente y Resuelto" role="img"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-7">
+            <div class="card shadow-sm h-100">
+                <div class="card-body p-4 d-flex flex-column">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <h2 class="h5 mb-1">Solicitudes por municipio y estatus</h2>
+                            <p class="text-body-secondary small mb-0">
+                                Distribución de solicitudes “Pendiente” y “Resuelto” por municipio
+                            </p>
+                        </div>
+                        <span class="badge text-bg-light border">Barras</span>
+                    </div>
+                    <div class="chart-box flex-grow-1 d-flex align-items-center justify-content-center">
+                        <canvas id="municipios-chart" aria-label="Gráfica de barras de estatus por municipio" role="img"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabla resumen por municipio -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body p-4">
+            <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 mb-3">
+                <div>
+                    <h2 class="h5 mb-1">Desglose de estatus por municipio</h2>
+                    <p class="text-body-secondary small mb-0">Datos sincronizados mediante <code>GET /api/v1/dashboard/estatus</code></p>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table align-middle admin-table mb-0">
+                    <thead>
+                        <tr>
+                            <th scope="col">Municipio</th>
+                            <th scope="col" class="text-center">Pendiente</th>
+                            <th scope="col" class="text-center">Resuelto</th>
+                            <th scope="col" class="text-center">Total</th>
+                            <th scope="col" class="text-end">Avance</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-municipios-body">
+                        {% for item in estadisticas.por_municipio %}
+                        {% set avance_mun = ((item.resueltos / item.total) * 100) | round(1) if item.total > 0 else 0.0 %}
+                        <tr>
+                            <td class="fw-semibold">
+                                {{ item.nombre }}
+                                {% if not item.activo %}
+                                <span class="badge text-bg-secondary ms-1">Inactivo</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <span class="badge status-badge-pendiente">{{ item.pendientes }}</span>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge status-badge-resuelto">{{ item.resueltos }}</span>
+                            </td>
+                            <td class="text-center fw-bold">{{ item.total }}</td>
+                            <td class="text-end">{{ avance_mun }}%</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Accesos rápidos de administración -->
     <div class="row g-3">
-        <div class="col-md-6">
+        <div class="col-md-4">
             <a class="card shadow-sm h-100 text-decoration-none dashboard-link" href="{{ url_for('admin.solicitudes') }}">
                 <div class="card-body p-4">
                     <h2 class="h5">Solicitudes</h2>
@@ -19,7 +187,7 @@
                 </div>
             </a>
         </div>
-        <div class="col-md-6">
+        <div class="col-md-4">
             <a class="card shadow-sm h-100 text-decoration-none dashboard-link" href="{{ url_for('catalogos.listar', clave='municipios') }}">
                 <div class="card-body p-4">
                     <h2 class="h5">Catálogo de municipios</h2>
@@ -27,7 +195,7 @@
                 </div>
             </a>
         </div>
-        <div class="col-md-6">
+        <div class="col-md-4">
             <a class="card shadow-sm h-100 text-decoration-none dashboard-link" href="{{ url_for('catalogos.listar', clave='estatus') }}">
                 <div class="card-body p-4">
                     <h2 class="h5">Catálogo de estatus</h2>
@@ -37,4 +205,14 @@
         </div>
     </div>
 </section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script id="dashboard-initial-data" type="application/json">
+{{ estadisticas | tojson }}
+</script>
+<script
+    src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"
+    crossorigin="anonymous"></script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 {% endblock %}

@@ -16,18 +16,24 @@ from services.auth_service import (
     CaptchaService,
     CsrfProtectionService,
 )
+from services.dashboard_service import DashboardService
 
 
 class AuthController:
     """Controlador MVC orientado a objetos para autenticación, CAPTCHA y sesión administrativa."""
 
-    def __init__(self, auth_service: AuthService | None = None):
+    def __init__(
+        self,
+        auth_service: AuthService | None = None,
+        dashboard_service: DashboardService | None = None,
+    ):
         self.csrf_service = CsrfProtectionService()
         self.captcha_service = CaptchaService()
         self.auth_service = auth_service or AuthService(
             csrf_service=self.csrf_service,
             captcha_service=self.captcha_service,
         )
+        self.dashboard_service = dashboard_service or DashboardService()
 
     def admin_required(self, view):
         @wraps(view)
@@ -83,7 +89,29 @@ class AuthController:
         return redirect(url_for("auth.dashboard"))
 
     def dashboard(self):
-        return render_template("auth/dashboard.html")
+        raw_municipio = (request.args.get("municipio_id") or "").strip()
+        municipio_id = None
+        if raw_municipio and raw_municipio.lower() != "all":
+            try:
+                parsed_id = int(raw_municipio)
+                if parsed_id > 0:
+                    municipio_id = parsed_id
+            except ValueError:
+                municipio_id = None
+
+        try:
+            estadisticas = self.dashboard_service.obtener_estadisticas(
+                municipio_id=municipio_id
+            )
+        except LookupError:
+            estadisticas = self.dashboard_service.obtener_estadisticas(
+                municipio_id=None
+            )
+
+        return render_template(
+            "auth/dashboard.html",
+            estadisticas=estadisticas,
+        )
 
     def logout(self):
         supplied_csrf = request.form.get("csrf_token", "")

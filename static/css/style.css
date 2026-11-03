@@ -116,3 +116,54 @@ fieldset legend {
     color: #176b2c;
     background-color: #e5f6e9;
 }
+
+
+/* Estilos del Tablero (Dashboard) */
+.dashboard-container {
+    max-width: 1140px;
+}
+
+.kpi-card {
+    border-left: 4px solid #5b2c6f;
+}
+
+.kpi-card.kpi-pendiente {
+    border-left-color: #f59f00;
+}
+
+.kpi-card.kpi-resuelto {
+    border-left-color: #2b8a3e;
+}
+
+.kpi-card.kpi-avance {
+    border-left-color: #3b5bdb;
+}
+
+.status-badge-pendiente {
+    color: #8a5a00;
+    background-color: #fff3bf;
+    font-weight: 600;
+    padding: 0.35em 0.65em;
+}
+
+.status-badge-resuelto {
+    color: #176b2c;
+    background-color: #d3f9d8;
+    font-weight: 600;
+    padding: 0.35em 0.65em;
+}
+
+.chart-box {
+    position: relative;
+    min-height: 280px;
+    width: 100%;
+}
+
+.dashboard-link {
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    color: inherit;
+}
+
+.dashboard-link:hover {
+    transform: translateY(-2px);
+}
