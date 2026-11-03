@@ -1,4 +1,4 @@
-CREATE DATABASE ticket_turno CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE IF NOT EXISTS ticket_turno CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE ticket_turno;
 
 CREATE TABLE municipios (
